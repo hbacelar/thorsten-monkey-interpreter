@@ -1,6 +1,6 @@
 use anyhow::Result;
-use thorsten_interpreter::repl::Repl;
 use std::io::{self};
+use thorsten_interpreter::repl::Repl;
 
 fn main() -> Result<()> {
     println!(

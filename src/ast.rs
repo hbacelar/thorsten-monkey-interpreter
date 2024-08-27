@@ -1,6 +1,6 @@
 use anyhow::bail;
 
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Program {
@@ -51,7 +51,7 @@ pub enum CallableExpression {
 #[derive(Debug, PartialEq, Eq)]
 pub struct CallExpression {
     pub func: CallableExpression,
-    pub arguments: Vec<Expression>
+    pub arguments: Vec<Expression>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -133,25 +133,25 @@ pub enum Operator {
     Lparen,
 }
 
-// impl TryFrom<&Token<'_>> for Operator {
-//     type Error = anyhow::Error;
-//
-//     fn try_from(value: &Token) -> Result<Self, Self::Error> {
-//         match value {
-//             Token::Plus => Ok(Operator::Plus),
-//             Token::Minus => Ok(Operator::Minus),
-//             Token::Bang => Ok(Operator::Bang),
-//             Token::Asterisk => Ok(Operator::Asterisk),
-//             Token::Slash => Ok(Operator::Slash),
-//             Token::Lt => Ok(Operator::Lt),
-//             Token::Gt => Ok(Operator::Gt),
-//             Token::Eq => Ok(Operator::Eq),
-//             Token::NotEq => Ok(Operator::NotEq),
-//             Token::Lparen => Ok(Operator::Lparen),
-//             _ => bail!("Token cannot be converted into operator"),
-//         }
-//     }
-// }
+impl TryFrom<&Token<'_>> for Operator {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Token) -> Result<Self, Self::Error> {
+        match value.kind {
+            TokenKind::Plus => Ok(Operator::Plus),
+            TokenKind::Minus => Ok(Operator::Minus),
+            TokenKind::Bang => Ok(Operator::Bang),
+            TokenKind::Asterisk => Ok(Operator::Asterisk),
+            TokenKind::Slash => Ok(Operator::Slash),
+            TokenKind::Lt => Ok(Operator::Lt),
+            TokenKind::Gt => Ok(Operator::Gt),
+            TokenKind::Eq => Ok(Operator::Eq),
+            TokenKind::NotEq => Ok(Operator::NotEq),
+            TokenKind::Lparen => Ok(Operator::Lparen),
+            _ => bail!("Token cannot be converted into operator"),
+        }
+    }
+}
 
 // #[derive(Debug, PartialEq, Eq)]
 // pub enum Node {
