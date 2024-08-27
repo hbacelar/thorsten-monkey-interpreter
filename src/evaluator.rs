@@ -39,7 +39,32 @@ impl Evaluator {
                     _ => Ok(Object::Null),
                 }
             }
-            Expression::Infix(_) => todo!(),
+            Expression::Infix(exp) => {
+                // test for int operators
+                if let Object::Integer(lval) = Self::eval_exp(&exp.left)? {
+                    if let Object::Integer(rval) = Self::eval_exp(&exp.right)? {
+                        return match exp.operator {
+                            // int result
+                            Operator::Minus => Ok(Object::Integer(lval - rval)),
+                            Operator::Plus => Ok(Object::Integer(lval + rval)),
+                            Operator::Asterisk => Ok(Object::Integer(lval * rval)),
+                            Operator::Slash => Ok(Object::Integer(lval / rval)),
+                            Operator::Eq => Ok(Object::Boolean(lval == rval)),
+                            Operator::NotEq => Ok(Object::Boolean(lval != rval)),
+                            Operator::Lt => Ok(Object::Boolean(lval < rval)),
+                            Operator::Gt => Ok(Object::Boolean(lval > rval)),
+                            _ => Ok(Object::Boolean(false)),
+                        };
+                    }
+                }
+
+                // Test for all operators
+                match exp.operator {
+                    Operator::Eq => Ok(Object::Boolean(exp.left == exp.right)),
+                    Operator::NotEq => Ok(Object::Boolean(exp.left != exp.right)),
+                    _ => Ok(Object::Null),
+                }
+            }
             Expression::If(_) => todo!(),
             Expression::Call(_) => todo!(),
         }
@@ -112,6 +137,26 @@ mod tests {
                 input: "-10",
                 expected: Object::Integer(-10),
             },
+            ObjectTest {
+                input: "5 + 5 + 5 + 5 - 10",
+                expected: Object::Integer(10),
+            },
+            ObjectTest {
+                input: "2 * 2 * 2 * 2 * 2",
+                expected: Object::Integer(32),
+            },
+            ObjectTest {
+                input: "5 + 2 * 10",
+                expected: Object::Integer(25),
+            },
+            ObjectTest {
+                input: "50 / 2 * 2 + 10",
+                expected: Object::Integer(60),
+            },
+            ObjectTest {
+                input: "(5 + 10 * 2 + 15 / 3) * 2 + -10",
+                expected: Object::Integer(50),
+            },
         ];
 
         for test in tests {
@@ -172,6 +217,38 @@ mod tests {
             },
             ObjectTest {
                 input: "!!5",
+                expected: Object::Boolean(true),
+            },
+            ObjectTest {
+                input: "5 > 3",
+                expected: Object::Boolean(true),
+            },
+            ObjectTest {
+                input: "5 < 3",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "1 == 1",
+                expected: Object::Boolean(true),
+            },
+            ObjectTest {
+                input: "1 != 1",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "true != true",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "true == true",
+                expected: Object::Boolean(true),
+            },
+            ObjectTest {
+                input: "false != false",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "false == false",
                 expected: Object::Boolean(true),
             },
         ];
