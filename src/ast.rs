@@ -33,15 +33,13 @@ pub enum Statement {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Expression {
-    // Identifier(Identifier),
-    // FunctionLiteral(FunctionLiteral),
-    CallableExpression(CallableExpression),
+    Callable(CallableExpression),
     IntegerLiteral(IntegerLiteral),
     BooleanLiteral(BooleanLiteral),
-    PrefixExpression(PrefixExpression),
-    InfixExpression(InfixExpression),
-    IfExpression(IfExpression),
-    CallExpression(CallExpression),
+    Prefix(PrefixExpression),
+    Infix(InfixExpression),
+    If(IfExpression),
+    Call(CallExpression),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -132,6 +130,7 @@ pub enum Operator {
     NotEq,
     Lt,
     Gt,
+    Lparen,
 }
 
 impl TryFrom<&Token> for Operator {
@@ -148,6 +147,7 @@ impl TryFrom<&Token> for Operator {
             Token::Gt => Ok(Operator::Gt),
             Token::Eq => Ok(Operator::Eq),
             Token::NotEq => Ok(Operator::NotEq),
+            Token::Lparen => Ok(Operator::Lparen),
             _ => bail!("Token cannot be converted into operator"),
         }
     }

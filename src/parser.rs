@@ -2,9 +2,9 @@ use std::mem;
 
 use crate::{
     ast::{
-        BlockStatement, CallableExpression, Expression, ExpressionStatement, FunctionLiteral,
-        Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement, Operator,
-        PrefixExpression, Program, ReturnStatement, Statement,
+        BlockStatement, CallExpression, CallableExpression, Expression, ExpressionStatement,
+        FunctionLiteral, Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement,
+        Operator, PrefixExpression, Program, ReturnStatement, Statement,
     },
     lexer::Lexer,
     token::Token,
@@ -20,7 +20,7 @@ pub struct Parser {
 impl Token {
     fn prefix_parse(&self, parser: &mut Parser) -> Result<Expression> {
         match &self {
-            Token::Ident(ident) => Ok(Expression::CallableExpression(
+            Token::Ident(ident) => Ok(Expression::Callable(
                 CallableExpression::Identifier(Identifier {
                     value: ident.clone(),
                 }),
@@ -29,7 +29,7 @@ impl Token {
                 parser.next_token();
 
                 let right = parser.parse_expression(OperatorPrecedence::Prefix)?;
-                Ok(Expression::PrefixExpression(PrefixExpression {
+                Ok(Expression::Prefix(PrefixExpression {
                     right: Box::new(right),
                     operator: self.try_into()?,
                 }))
@@ -68,7 +68,7 @@ impl Token {
 
                 let body = parser.parse_block_statement()?;
 
-                Ok(Expression::CallableExpression(
+                Ok(Expression::Callable(
                     CallableExpression::FunctionLiteral(FunctionLiteral { body, parameters }),
                 ))
             }
@@ -106,13 +106,13 @@ impl Token {
 
                     let alternative = parser.parse_block_statement()?;
 
-                    Ok(Expression::IfExpression(IfExpression {
+                    Ok(Expression::If(IfExpression {
                         condition: Box::new(condition),
                         consequence,
                         alternative: Some(alternative),
                     }))
                 } else {
-                    Ok(Expression::IfExpression(IfExpression {
+                    Ok(Expression::If(IfExpression {
                         condition: Box::new(condition),
                         consequence,
                         alternative: None,
@@ -139,11 +139,21 @@ impl Token {
                 parser.next_token();
                 parser.next_token();
                 let right = parser.parse_expression(precedence)?;
-                Ok(Expression::InfixExpression(InfixExpression {
+                Ok(Expression::Infix(InfixExpression {
                     right: Box::new(right),
                     left: Box::new(left),
                     operator: op,
                 }))
+            }
+            Token::Lparen => {
+                if let Expression::Callable(callable) = left {
+                    parser.next_token();
+                    return Ok(Expression::Call(CallExpression {
+                        func: callable,
+                        arguments: parser.parse_call_arguments()?,
+                    }));
+                }
+                bail!("expression is not callable")
             }
             _ => Ok(left),
         }
@@ -172,6 +182,7 @@ impl From<&Operator> for OperatorPrecedence {
             Operator::NotEq => Self::Equals,
             Operator::Lt => Self::LessGreater,
             Operator::Gt => Self::LessGreater,
+            Operator::Lparen => Self::Call,
             _ => Self::Lowest,
         }
     }
@@ -218,7 +229,7 @@ impl Parser {
 
                 let statement = Ok(Statement::Let(LetStatement {
                     name,
-                    value: Expression::CallableExpression(CallableExpression::Identifier(
+                    value: Expression::Callable(CallableExpression::Identifier(
                         Identifier {
                             value: "todo".to_string(),
                         },
@@ -239,7 +250,7 @@ impl Parser {
             }
         }
         Ok(Statement::Return(ReturnStatement {
-            value: Expression::CallableExpression(CallableExpression::Identifier(Identifier {
+            value: Expression::Callable(CallableExpression::Identifier(Identifier {
                 value: "todo".to_string(),
             })),
         }))
@@ -297,6 +308,36 @@ impl Parser {
         if let Some(Token::Rparen) = self.peek_token {
             self.next_token();
             return Ok(identifiers);
+        }
+        bail!("lparen not found after params");
+    }
+
+    fn parse_call_arguments(&mut self) -> Result<Vec<Expression>> {
+        let mut expressions = Vec::new();
+        self.next_token();
+
+        if let Some(Token::Rparen) = self.current_token {
+            self.next_token();
+            return Ok(expressions);
+        }
+        let expression = self.parse_expression(OperatorPrecedence::Lowest)?;
+        expressions.push(expression);
+
+        while self.peek_token.is_some() {
+            if let Some(Token::Comma) = self.peek_token {
+                self.next_token();
+                self.next_token();
+
+                let expression = self.parse_expression(OperatorPrecedence::Lowest)?;
+                expressions.push(expression);
+            } else {
+                break;
+            }
+        }
+
+        if let Some(Token::Rparen) = self.peek_token {
+            self.next_token();
+            return Ok(expressions);
         }
         bail!("lparen not found after params");
     }
@@ -372,8 +413,6 @@ mod tests {
     use core::panic;
     use std::mem;
 
-    use anyhow::bail;
-
     use crate::{
         ast::{CallableExpression, Expression, Identifier, IntegerLiteral, Operator, Statement},
         lexer::Lexer,
@@ -428,7 +467,7 @@ mod tests {
 
     pub fn test_identifier_exp(exp: &Expression, val: String) {
         match exp {
-            Expression::CallableExpression(CallableExpression::Identifier(ident)) => {
+            Expression::Callable(CallableExpression::Identifier(ident)) => {
                 assert_eq!(ident.value, val);
             }
             _ => panic!("expression is not identifier"),
@@ -442,7 +481,7 @@ mod tests {
         right: &Expression,
     ) {
         match exp {
-            Expression::InfixExpression(exp) => {
+            Expression::Infix(exp) => {
                 assert_eq!(exp.left.as_ref(), left);
                 assert_eq!(exp.right.as_ref(), right);
                 assert_eq!(exp.operator, operator);
@@ -624,7 +663,7 @@ let foobar = 838383;
 
             match stmt {
                 Statement::Expression(exp) => match &exp.expression {
-                    Expression::PrefixExpression(exp) => {
+                    Expression::Prefix(exp) => {
                         assert_eq!(
                             mem::discriminant(&exp.operator),
                             mem::discriminant(&test.operator)
@@ -708,7 +747,7 @@ let foobar = 838383;
 
             match stmt {
                 Statement::Expression(exp) => match &exp.expression {
-                    Expression::InfixExpression(exp) => {
+                    Expression::Infix(exp) => {
                         assert_eq!(
                             mem::discriminant(&exp.operator),
                             mem::discriminant(&test.operator)
@@ -743,16 +782,16 @@ let foobar = 838383;
         match stmt {
             Statement::Expression(exp) => {
                 match &exp.expression {
-                    Expression::IfExpression(if_exp) => {
+                    Expression::If(if_exp) => {
                         test_infix_exp(
                             if_exp.condition.as_ref(),
-                            &Expression::CallableExpression(CallableExpression::Identifier(
+                            &Expression::Callable(CallableExpression::Identifier(
                                 Identifier {
                                     value: "x".to_string(),
                                 },
                             )),
                             Operator::Lt,
-                            &Expression::CallableExpression(CallableExpression::Identifier(
+                            &Expression::Callable(CallableExpression::Identifier(
                                 Identifier {
                                     value: "y".to_string(),
                                 },
@@ -807,16 +846,16 @@ let foobar = 838383;
         match stmt {
             Statement::Expression(exp) => {
                 match &exp.expression {
-                    Expression::IfExpression(if_exp) => {
+                    Expression::If(if_exp) => {
                         test_infix_exp(
                             if_exp.condition.as_ref(),
-                            &Expression::CallableExpression(CallableExpression::Identifier(
+                            &Expression::Callable(CallableExpression::Identifier(
                                 Identifier {
                                     value: "x".to_string(),
                                 },
                             )),
                             Operator::Lt,
-                            &Expression::CallableExpression(CallableExpression::Identifier(
+                            &Expression::Callable(CallableExpression::Identifier(
                                 Identifier {
                                     value: "y".to_string(),
                                 },
@@ -886,7 +925,7 @@ let foobar = 838383;
 
         match stmt {
             Statement::Expression(exp) => match &exp.expression {
-                Expression::CallableExpression(CallableExpression::FunctionLiteral(function)) => {
+                Expression::Callable(CallableExpression::FunctionLiteral(function)) => {
                     assert_eq!(
                         2,
                         function.parameters.len(),
@@ -910,13 +949,13 @@ let foobar = 838383;
                     match stmt {
                         Statement::Expression(exp) => test_infix_exp(
                             &exp.expression,
-                            &Expression::CallableExpression(CallableExpression::Identifier(
+                            &Expression::Callable(CallableExpression::Identifier(
                                 Identifier {
                                     value: "x".to_string(),
                                 },
                             )),
                             Operator::Plus,
-                            &Expression::CallableExpression(CallableExpression::Identifier(
+                            &Expression::Callable(CallableExpression::Identifier(
                                 Identifier {
                                     value: "y".to_string(),
                                 },
@@ -950,7 +989,7 @@ let foobar = 838383;
 
         match stmt {
             Statement::Expression(exp) => match &exp.expression {
-                Expression::CallExpression(call_expression) => {
+                Expression::Call(call_expression) => {
                     match &call_expression.func {
                         CallableExpression::Identifier(ident) => {
                             assert_eq!(
