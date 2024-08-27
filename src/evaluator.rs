@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Node, Program, Statement},
+    ast::{Expression, Node, Operator, Program, Statement},
     object::Object,
 };
 use anyhow::{bail, Result};
@@ -20,7 +20,25 @@ impl Evaluator {
             Expression::Callable(_) => todo!(),
             Expression::IntegerLiteral(int) => Ok(Object::Integer(int.value)),
             Expression::BooleanLiteral(b) => Ok(Object::Boolean(b.value)),
-            Expression::Prefix(_) => todo!(),
+            Expression::Prefix(exp) => {
+                let right = Self::eval_exp(&exp.right)?;
+
+                match exp.operator {
+                    Operator::Bang => match right {
+                        Object::Boolean(true) => Ok(Object::Boolean(false)),
+                        Object::Boolean(false) => Ok(Object::Boolean(true)),
+                        Object::Null => Ok(Object::Boolean(true)),
+                        _ => Ok(Object::Boolean(false)),
+                    },
+                    Operator::Minus => {
+                        if let Object::Integer(i) = right {
+                            return Ok(Object::Integer(-i));
+                        }
+                        Ok(Object::Null)
+                    }
+                    _ => Ok(Object::Null),
+                }
+            }
             Expression::Infix(_) => todo!(),
             Expression::If(_) => todo!(),
             Expression::Call(_) => todo!(),
@@ -67,13 +85,6 @@ mod tests {
         pub expected: Object,
     }
 
-    // fn test_integer_object(obj: &Object, expected: i64) {
-    //     if let Object::Integer(val) = obj {
-    //         assert_eq!(*val, expected, "invalid integer value");
-    //     }
-    //     panic!("obj is not integer");
-    // }
-
     fn test_eval(input: &str) -> Result<Object> {
         let l = Lexer::new(input);
         let p = Parser::new(l);
@@ -93,6 +104,14 @@ mod tests {
                 input: "10",
                 expected: Object::Integer(10),
             },
+            ObjectTest {
+                input: "-5",
+                expected: Object::Integer(-5),
+            },
+            ObjectTest {
+                input: "-10",
+                expected: Object::Integer(-10),
+            },
         ];
 
         for test in tests {
@@ -104,7 +123,7 @@ mod tests {
             );
         }
     }
-    
+
     #[test]
     fn test_eval_bool_expression() {
         let tests = vec![
@@ -115,6 +134,45 @@ mod tests {
             ObjectTest {
                 input: "false",
                 expected: Object::Boolean(false),
+            },
+        ];
+
+        for test in tests {
+            let obj = test_eval(test.input).unwrap();
+            assert_eq!(
+                obj, test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj, test.expected
+            );
+        }
+    }
+
+    #[test]
+    fn test_eval_bang_operator() {
+        let tests = vec![
+            ObjectTest {
+                input: "!true",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "!false",
+                expected: Object::Boolean(true),
+            },
+            ObjectTest {
+                input: "!5",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "!!false",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "!!false",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "!!5",
+                expected: Object::Boolean(true),
             },
         ];
 
