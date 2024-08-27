@@ -38,7 +38,19 @@ impl Token {
             Token::False => Ok(Expression::BooleanLiteral(crate::ast::BooleanLiteral {
                 value: false,
             })),
-            _ => bail!("test broken exp"),
+            Token::Lparen => {
+                parser.next_token();
+                let exp = parser.parse_expression(OperatorPrecedence::Lowest);
+
+                if let Some(Token::Rparen) = parser.peek_token {
+                    // check this next
+                    parser.next_token();
+                    exp
+                } else {
+                    bail!("right parentesis not found after left");
+                }
+            }
+            _ => bail!("test broken exp {:?}", &self),
         }
     }
 
@@ -584,18 +596,18 @@ let foobar = 838383;
 
     #[test]
     fn test_playground() {
-        let input = "-1 + 2";
+        let input = "(-(5 + 5))";
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
         let program = parser.parse_program().unwrap();
 
+        dbg!(&program);
         assert_eq!(
             1,
             program.statments.len(),
             "invalid number of statements: {}",
             program.statments.len()
         );
-        dbg!(&program);
     }
 }
