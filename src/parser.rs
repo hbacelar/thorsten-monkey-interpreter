@@ -158,7 +158,6 @@ impl Parser {
 
     fn parse_expression(&mut self, precedence: OperatorPrecedence) -> Result<Expression> {
         if let Some(token) = &self.current_token {
-            // TODO double mutable reference need fix
             let curr_token = token.clone();
             let mut left = curr_token.prefix_parse(self)?;
 
@@ -179,33 +178,14 @@ impl Parser {
                     }
 
                     let curr_peak_token = peak_token.clone();
-                    // check this
-                    // self.next_token();
+                    // should it advance the parser here
                     left = curr_peak_token.infix_parse(left, self)?;
-
-                    // // TODO improve this
-                    // let curr_peak_token = peak_token.clone();
-                    // // VE SE A TOKEN SUPORTA INFIX
-                    // self.next_token();
-                    // let before = self.lexer.position;
-                    // left = curr_peak_token.infix_parse(left, self)?;
-                    // let after = self.lexer.position;
-                    //
-                    // if before == after {
-                    //     return Ok(left);
-                    // }
-                    // self.next_token();
+                    // should it advance again if it advanced
                 } else {
                     break;
                 }
             }
             return Ok(left);
-
-            // todo!();
-            // return curr_token.prefix_parse(self);
-            // if let Ok(expression) = curr_token.prefix_parse(self) {
-            //     return Ok(expression);
-            // }
         }
         bail!("cannot parse expression");
     }
@@ -542,7 +522,7 @@ let foobar = 838383;
 
     #[test]
     fn test_playground() {
-        let input = "a + b * c + d / e - f";
+        let input = "-1 + 2";
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 

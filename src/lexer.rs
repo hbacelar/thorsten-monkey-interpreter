@@ -103,7 +103,7 @@ impl Lexer {
             _ => {
                 if ch.is_alphabetic() {
                     let ident = self.read_itentifier();
-                    let tok = match ident.as_ref() {
+                    let tok = match ident {
                         "let" => Token::Let,
                         "fn" => Token::Function,
                         "if" => Token::If,

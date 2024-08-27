@@ -8,6 +8,12 @@ pub struct Program {
     pub errors: Vec<String>,
 }
 
+impl Default for Program {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Program {
     pub fn new() -> Self {
         Program {
