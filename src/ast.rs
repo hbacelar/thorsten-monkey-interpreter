@@ -15,15 +15,16 @@ impl Program {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Statement {
-    LetStatement(LetStatement),
-    ReturnStatement(ReturnStatement),
-    ExpressionStatement(ExpressionStatement),
+    Let(LetStatement),
+    Return(ReturnStatement),
+    Expression(ExpressionStatement),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Expression {
     Identifier(Identifier),
-    IntegerLiteral(IntegerLiteral)
+    IntegerLiteral(IntegerLiteral),
+    PrefixExpression(PrefixExpression),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -50,6 +51,19 @@ pub struct Identifier {
 #[derive(Debug, PartialEq, Eq)]
 pub struct IntegerLiteral {
     pub value: i32,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct PrefixExpression {
+    // TODO use arenas, and vec based index on nodes
+    pub right: Box<Expression>,
+    pub operator: Operator,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Operator {
+    Minus,
+    Bang,
 }
 
 #[derive(Debug, PartialEq, Eq)]

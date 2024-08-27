@@ -2,8 +2,8 @@ use std::mem;
 
 use crate::{
     ast::{
-        Expression, ExpressionStatement, Identifier, IntegerLiteral, LetStatement, Program,
-        ReturnStatement, Statement,
+        Expression, ExpressionStatement, Identifier, IntegerLiteral, LetStatement, Operator,
+        PrefixExpression, Program, ReturnStatement, Statement,
     },
     lexer::Lexer,
     token::Token,
@@ -17,13 +17,31 @@ pub struct Parser {
 }
 
 impl Token {
-    fn prefix_parse(&self) -> Option<Expression> {
+    fn prefix_parse(&self, parser: &mut Parser) -> Result<Expression> {
         match &self {
-            Token::Ident(ident) => Some(Expression::Identifier(Identifier {
+            Token::Ident(ident) => Ok(Expression::Identifier(Identifier {
                 value: ident.clone(),
             })),
-            Token::Int(value) => Some(Expression::IntegerLiteral(IntegerLiteral { value: *value })),
-            _ => None,
+            Token::Bang => {
+                parser.next_token();
+
+                let right = parser.parse_expression(OperatorPrecedence::Prefix)?;
+                Ok(Expression::PrefixExpression(PrefixExpression {
+                    right: Box::new(right),
+                    operator: Operator::Bang,
+                }))
+            }
+            Token::Minus => {
+                parser.next_token();
+
+                let right = parser.parse_expression(OperatorPrecedence::Prefix)?;
+                Ok(Expression::PrefixExpression(PrefixExpression {
+                    right: Box::new(right),
+                    operator: Operator::Minus,
+                }))
+            }
+            Token::Int(value) => Ok(Expression::IntegerLiteral(IntegerLiteral { value: *value })),
+            _ => bail!("test broken exp"),
         }
     }
 
@@ -35,6 +53,12 @@ impl Token {
 #[derive(Debug, PartialEq, Eq)]
 enum OperatorPrecedence {
     Lowest = 0,
+    Equals = 1,
+    LessGreater = 2,
+    Sum = 3,
+    Product = 4,
+    Prefix = 5,
+    Call = 6,
 }
 
 impl Parser {
@@ -76,7 +100,7 @@ impl Parser {
                     }
                 }
 
-                let statement = Ok(Statement::LetStatement(LetStatement {
+                let statement = Ok(Statement::Let(LetStatement {
                     name,
                     value: Expression::Identifier(Identifier {
                         value: "todo".to_string(),
@@ -96,19 +120,21 @@ impl Parser {
                 break;
             }
         }
-        let statement = Ok(Statement::ReturnStatement(ReturnStatement {
+        Ok(Statement::Return(ReturnStatement {
             value: Expression::Identifier(Identifier {
                 value: "todo".to_string(),
             }),
-        }));
-        return statement;
+        }))
     }
 
-    fn parse_expression(&self, _precedence: OperatorPrecedence) -> Result<Expression> {
+    fn parse_expression(&mut self, _precedence: OperatorPrecedence) -> Result<Expression> {
         if let Some(token) = &self.current_token {
-            if let Some(expression) = token.prefix_parse() {
-                return Ok(expression);
-            }
+            // TODO double mutable reference need fix
+            let curr_token = token.clone();
+            return curr_token.prefix_parse(self);
+            // if let Ok(expression) = curr_token.prefix_parse(self) {
+            //     return Ok(expression);
+            // }
         }
         bail!("cannot parse expression");
     }
@@ -120,9 +146,7 @@ impl Parser {
             self.next_token();
         }
 
-        Ok(Statement::ExpressionStatement(ExpressionStatement {
-            expression,
-        }))
+        Ok(Statement::Expression(ExpressionStatement { expression }))
     }
 
     fn parse_statement(&mut self) -> Result<Statement> {
@@ -136,7 +160,7 @@ impl Parser {
     pub fn parse_program(mut self) -> Result<Program> {
         let mut p = Program::new();
 
-        while let Some(_) = self.current_token {
+        while self.current_token.is_some() {
             match self.parse_statement() {
                 Ok(stmt) => p.statments.push(stmt),
                 Err(err) => p.errors.push(err.to_string()),
@@ -150,9 +174,10 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use core::panic;
+    use std::mem;
 
     use crate::{
-        ast::{Expression, Identifier, Statement},
+        ast::{Expression, Identifier, Operator, Statement},
         lexer::Lexer,
     };
 
@@ -160,12 +185,12 @@ mod tests {
 
     struct PrefixOperationTests {
         pub input: String,
-        pub operator: String,
+        pub operator: Operator,
         pub int: i32,
     }
 
     fn test_let_statement(statement: &Statement, val: &str) {
-        if let Statement::LetStatement(statement) = statement {
+        if let Statement::Let(statement) = statement {
             assert_eq!(
                 statement.name.value.as_str(),
                 val,
@@ -175,6 +200,15 @@ mod tests {
             );
         } else {
             assert!(false, "statment was not let: {:?}", statement);
+        }
+    }
+
+    pub fn test_int_literal(exp: &Expression, val: i32) {
+        match exp {
+            Expression::IntegerLiteral(integer) => {
+                assert_eq!(integer.value, val);
+            }
+            _ => panic!("expression is not integer literal"),
         }
     }
 
@@ -199,7 +233,7 @@ return 838383;
 
         for stmt in program.statments {
             match stmt {
-                Statement::ReturnStatement(_) => continue,
+                Statement::Return(_) => continue,
                 _ => {
                     panic!("Not found return statement")
                 }
@@ -262,7 +296,7 @@ let foobar = 838383;
         let stmt = program.statments.get(0).unwrap();
 
         match stmt {
-            Statement::ExpressionStatement(exp) => match &exp.expression {
+            Statement::Expression(exp) => match &exp.expression {
                 Expression::Identifier(ident) => {
                     assert_eq!(ident.value, "foobar".to_string());
                 }
@@ -290,12 +324,9 @@ let foobar = 838383;
         let stmt = program.statments.get(0).unwrap();
 
         match stmt {
-            Statement::ExpressionStatement(exp) => match &exp.expression {
-                Expression::IntegerLiteral(integer) => {
-                    assert_eq!(integer.value, 5);
-                }
-                _ => panic!("Statment is not identifier expression"),
-            },
+            Statement::Expression(exp) => {
+                test_int_literal(&exp.expression, 5);
+            }
             _ => panic!("Statment is not identifier expression"),
         }
     }
@@ -305,12 +336,12 @@ let foobar = 838383;
         let tests = vec![
             PrefixOperationTests {
                 input: "!5".to_string(),
-                operator: "!".to_string(),
+                operator: Operator::Bang,
                 int: 5,
             },
             PrefixOperationTests {
                 input: "-15".to_string(),
-                operator: "-".to_string(),
+                operator: Operator::Minus,
                 int: 15,
             },
         ];
@@ -327,31 +358,22 @@ let foobar = 838383;
                 "invalid number of statements: {}",
                 program.statments.len()
             );
-        }
 
-        // let input = "5;";
-        // let lexer = Lexer::new(input.to_string());
-        // let parser = Parser::new(lexer);
-        //
-        // let program = parser.parse_program().unwrap();
-        //
-        // assert_eq!(
-        //     1,
-        //     program.statments.len(),
-        //     "invalid number of statements: {}",
-        //     program.statments.len()
-        // );
-        //
-        // let stmt = program.statments.get(0).unwrap();
-        //
-        // match stmt {
-        //     Statement::ExpressionStatement(exp) => match &exp.expression {
-        //         Expression::IntegerLiteral(integer) => {
-        //             assert_eq!(integer.value, 5);
-        //         }
-        //         _ => panic!("Statment is not identifier expression"),
-        //     },
-        //     _ => panic!("Statment is not identifier expression"),
-        // }
+            let stmt = program.statments.get(0).unwrap();
+
+            match stmt {
+                Statement::Expression(exp) => match &exp.expression {
+                    Expression::PrefixExpression(exp) => {
+                        assert_eq!(
+                            mem::discriminant(&exp.operator),
+                            mem::discriminant(&test.operator)
+                        );
+                        test_int_literal(&exp.right, test.int);
+                    }
+                    _ => panic!("Prefix not found expression"),
+                },
+                _ => panic!("Statment is not identifier expression"),
+            }
+        }
     }
 }
