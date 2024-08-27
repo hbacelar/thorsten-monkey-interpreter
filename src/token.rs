@@ -6,6 +6,9 @@ pub struct Token<'a> {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TokenKind {
+    //String
+    String,
+
     //Keywords
     Let,
     Function,

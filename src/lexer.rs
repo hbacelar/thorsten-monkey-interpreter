@@ -60,6 +60,15 @@ impl<'a> Lexer<'a> {
         &self.input[pos..self.position]
     }
 
+    fn read_string(&mut self) -> &'a str {
+        self.read_char();
+        let pos = self.position;
+        while self.ch != '"' && self.ch != '\0' {
+            self.read_char()
+        }
+        &self.input[pos..self.position]
+    }
+
     fn consume_whitespace(&mut self) {
         while self.ch == ' ' || self.ch == '\t' || self.ch == '\n' || self.ch == '\r' {
             self.read_char();
@@ -107,6 +116,13 @@ impl<'a> Lexer<'a> {
             '\0' => Token {
                 kind: TokenKind::Eof,
                 val: "",
+            },
+            '"' => {
+                let val = self.read_string();
+                Token {
+                    kind: TokenKind::String,
+                    val
+                }
             },
             _ => {
                 if ch.is_alphabetic() {
@@ -182,6 +198,8 @@ mod tests {
     #[test]
     fn next_token() {
         let input = "let five = 5;
+        \"foobar\";
+        \"foo bar\";
 ";
         let tokens = vec![
             Token {
@@ -199,6 +217,22 @@ mod tests {
             Token {
                 kind: TokenKind::Int,
                 val: "5",
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                val: ";",
+            },
+            Token {
+                kind: TokenKind::String,
+                val: "foobar",
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                val: ";",
+            },
+            Token {
+                kind: TokenKind::String,
+                val: "foo bar",
             },
             Token {
                 kind: TokenKind::Semicolon,
