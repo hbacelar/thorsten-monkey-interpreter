@@ -381,7 +381,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_program(mut self) -> Result<Program> {
+    pub fn parse_program(mut self) -> Program {
         let mut p = Program::new();
 
         while self.current_token.is_some() {
@@ -391,7 +391,7 @@ impl Parser {
             }
             self.next_token();
         }
-        Ok(p)
+        p
     }
 }
 
@@ -487,7 +487,7 @@ return 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         assert_eq!(
             3,
@@ -516,7 +516,7 @@ let foobar = 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         assert_eq!(
             3,
@@ -549,7 +549,7 @@ let foobar = 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         assert_eq!(
             1,
@@ -574,7 +574,7 @@ let foobar = 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         assert_eq!(
             1,
@@ -599,7 +599,7 @@ let foobar = 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         assert_eq!(
             1,
@@ -637,7 +637,7 @@ let foobar = 838383;
             let lexer = Lexer::new(test.input);
             let parser = Parser::new(lexer);
 
-            let program = parser.parse_program().unwrap();
+            let program = parser.parse_program();
 
             assert_eq!(
                 1,
@@ -721,7 +721,7 @@ let foobar = 838383;
             let lexer = Lexer::new(test.input);
             let parser = Parser::new(lexer);
 
-            let program = parser.parse_program().unwrap();
+            let program = parser.parse_program();
 
             assert_eq!(
                 1,
@@ -755,7 +755,7 @@ let foobar = 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         assert_eq!(
             1,
@@ -815,7 +815,7 @@ let foobar = 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         assert_eq!(
             1,
@@ -891,7 +891,7 @@ let foobar = 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         assert_eq!(
             1,
@@ -951,7 +951,7 @@ let foobar = 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         assert_eq!(
             1,
@@ -1008,7 +1008,7 @@ let foobar = 838383;
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program();
 
         dbg!(&program);
         assert_eq!(
