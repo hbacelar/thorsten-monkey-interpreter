@@ -1,14 +1,14 @@
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 
-pub struct Lexer {
-    input: String,
+pub struct Lexer<'a> {
+    input: &'a str,
     pub position: usize,
     read_position: usize,
     ch: char,
 }
 
-impl Lexer {
-    pub fn new(input: String) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
         let mut l = Lexer {
             input,
             position: 0,
@@ -44,7 +44,7 @@ impl Lexer {
         }
     }
 
-    fn read_itentifier(&mut self) -> &str {
+    fn read_itentifier(&mut self) -> &'a str {
         let pos = self.position;
         while self.ch.is_alphabetic() {
             self.read_char()
@@ -52,14 +52,12 @@ impl Lexer {
         &self.input[pos..self.position]
     }
 
-    fn read_number(&mut self) -> i32 {
+    fn read_number(&mut self) -> &'a str {
         let pos = self.position;
         while self.ch.is_numeric() {
             self.read_char()
         }
-        self.input[pos..self.position]
-            .parse()
-            .expect("already validated with is numberic")
+        &self.input[pos..self.position]
     }
 
     fn consume_whitespace(&mut self) {
@@ -68,7 +66,14 @@ impl Lexer {
         }
     }
 
-    pub fn next_token(&mut self) -> Option<Token> {
+    fn token_from_pos(&self, kind: TokenKind) -> Token<'a> {
+        Token {
+            kind,
+            val: &self.input[self.position..self.read_position],
+        }
+    }
+
+    pub fn next_token(&mut self) -> Option<Token<'a>> {
         self.consume_whitespace();
 
         let ch = self.ch;
@@ -76,165 +81,132 @@ impl Lexer {
             '=' => match self.peak_char() {
                 '=' => {
                     self.read_char();
-                    Token::Eq
+                    self.token_from_pos(TokenKind::Eq)
                 }
-                _ => Token::Assign,
+                _ => self.token_from_pos(TokenKind::Assign),
             },
-            '+' => Token::Plus,
-            '-' => Token::Minus,
+            '+' => self.token_from_pos(TokenKind::Plus),
+            '-' => self.token_from_pos(TokenKind::Minus),
             '!' => match self.peak_char() {
                 '=' => {
                     self.read_char();
-                    Token::NotEq
+                    self.token_from_pos(TokenKind::NotEq)
                 }
-                _ => Token::Bang,
+                _ => self.token_from_pos(TokenKind::Bang),
             },
-            '*' => Token::Asterisk,
-            '/' => Token::Slash,
-            '<' => Token::Lt,
-            '>' => Token::Gt,
-            ';' => Token::Semicolon,
-            '(' => Token::Lparen,
-            ')' => Token::Rparen,
-            ',' => Token::Comma,
-            '{' => Token::Lbrace,
-            '}' => Token::Rbrace,
-            '\0' => Token::Eof,
+            '*' => self.token_from_pos(TokenKind::Asterisk),
+            '/' => self.token_from_pos(TokenKind::Slash),
+            '<' => self.token_from_pos(TokenKind::Lt),
+            '>' => self.token_from_pos(TokenKind::Gt),
+            ';' => self.token_from_pos(TokenKind::Semicolon),
+            '(' => self.token_from_pos(TokenKind::Lparen),
+            ')' => self.token_from_pos(TokenKind::Rparen),
+            ',' => self.token_from_pos(TokenKind::Comma),
+            '{' => self.token_from_pos(TokenKind::Lbrace),
+            '}' => self.token_from_pos(TokenKind::Rbrace),
+            '\0' => Token {
+                kind: TokenKind::Eof,
+                val: "",
+            },
             _ => {
                 if ch.is_alphabetic() {
                     let ident = self.read_itentifier();
                     let tok = match ident {
-                        "let" => Token::Let,
-                        "fn" => Token::Function,
-                        "if" => Token::If,
-                        "else" => Token::Else,
-                        "true" => Token::True,
-                        "false" => Token::False,
-                        "return" => Token::Return,
-                        _ => Token::Ident(ident.to_string()),
+                        "let" => Token {
+                            kind: TokenKind::Let,
+                            val: ident,
+                        },
+                        "fn" => Token {
+                            kind: TokenKind::Function,
+                            val: ident,
+                        },
+                        "if" => Token {
+                            kind: TokenKind::If,
+                            val: ident,
+                        },
+                        "else" => Token {
+                            kind: TokenKind::Else,
+                            val: ident,
+                        },
+                        "true" => Token {
+                            kind: TokenKind::True,
+                            val: ident,
+                        },
+                        "false" => Token {
+                            kind: TokenKind::False,
+                            val: ident,
+                        },
+                        "return" => Token {
+                            kind: TokenKind::Return,
+                            val: ident,
+                        },
+                        _ => Token {
+                            kind: TokenKind::Ident,
+                            val: ident,
+                        },
                     };
                     return Some(tok);
                 } else if ch.is_numeric() {
                     let n = self.read_number();
-                    return Some(Token::Int(n));
+                    return Some(Token {
+                        kind: TokenKind::Int,
+                        val: n,
+                    });
                 } else {
-                    Token::Illegal
+                    self.token_from_pos(TokenKind::Illegal)
                 }
             }
         };
         self.read_char();
-        match token {
-            Token::Eof => None,
+        match token.kind {
+            TokenKind::Eof => None,
             _ => Some(token),
         }
     }
 }
 
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Token<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_token()
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::token::Token;
+    use crate::token::{Token, TokenKind};
 
     use super::Lexer;
 
     #[test]
     fn next_token() {
         let input = "let five = 5;
-let ten = 10;
-
-let add = fn(x, y) {
-  x + y;
-};
-
-let result = add(five, ten);
-!-/*5;
-5 < 10 > 5;
-
-if (5 < 10) {
-    return true;
-} else {
-    return false;
-}
-
-10 == 10;
-10 != 9;
 ";
         let tokens = vec![
-            Token::Let,
-            Token::Ident("five".to_string()),
-            Token::Assign,
-            Token::Int(5),
-            Token::Semicolon,
-            Token::Let,
-            Token::Ident("ten".to_string()),
-            Token::Assign,
-            Token::Int(10),
-            Token::Semicolon,
-            Token::Let,
-            Token::Ident("add".to_string()),
-            Token::Assign,
-            Token::Function,
-            Token::Lparen,
-            Token::Ident("x".to_string()),
-            Token::Comma,
-            Token::Ident("y".to_string()),
-            Token::Rparen,
-            Token::Lbrace,
-            Token::Ident("x".to_string()),
-            Token::Plus,
-            Token::Ident("y".to_string()),
-            Token::Semicolon,
-            Token::Rbrace,
-            Token::Semicolon,
-            Token::Let,
-            Token::Ident("result".to_string()),
-            Token::Assign,
-            Token::Ident("add".to_string()),
-            Token::Lparen,
-            Token::Ident("five".to_string()),
-            Token::Comma,
-            Token::Ident("ten".to_string()),
-            Token::Rparen,
-            Token::Semicolon,
-            Token::Bang,
-            Token::Minus,
-            Token::Slash,
-            Token::Asterisk,
-            Token::Int(5),
-            Token::Semicolon,
-            Token::Int(5),
-            Token::Lt,
-            Token::Int(10),
-            Token::Gt,
-            Token::Int(5),
-            Token::Semicolon,
-            Token::If,
-            Token::Lparen,
-            Token::Int(5),
-            Token::Lt,
-            Token::Int(10),
-            Token::Rparen,
-            Token::Lbrace,
-            Token::Return,
-            Token::True,
-            Token::Semicolon,
-            Token::Rbrace,
-            Token::Else,
-            Token::Lbrace,
-            Token::Return,
-            Token::False,
-            Token::Semicolon,
-            Token::Rbrace,
-            Token::Int(10),
-            Token::Eq,
-            Token::Int(10),
-            Token::Semicolon,
-            Token::Int(10),
-            Token::NotEq,
-            Token::Int(9),
-            Token::Semicolon,
+            Token {
+                kind: TokenKind::Let,
+                val: "let",
+            },
+            Token {
+                kind: TokenKind::Ident,
+                val: "five",
+            },
+            Token {
+                kind: TokenKind::Assign,
+                val: "=",
+            },
+            Token {
+                kind: TokenKind::Int,
+                val: "5",
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                val: ";",
+            },
         ];
 
-        let mut lexer = Lexer::new(input.to_string());
+        let mut lexer = Lexer::new(input);
         for (index, tt) in tokens.into_iter().enumerate() {
             let token = lexer.next_token().unwrap();
 

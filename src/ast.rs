@@ -133,25 +133,25 @@ pub enum Operator {
     Lparen,
 }
 
-impl TryFrom<&Token> for Operator {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &Token) -> Result<Self, Self::Error> {
-        match value {
-            Token::Plus => Ok(Operator::Plus),
-            Token::Minus => Ok(Operator::Minus),
-            Token::Bang => Ok(Operator::Bang),
-            Token::Asterisk => Ok(Operator::Asterisk),
-            Token::Slash => Ok(Operator::Slash),
-            Token::Lt => Ok(Operator::Lt),
-            Token::Gt => Ok(Operator::Gt),
-            Token::Eq => Ok(Operator::Eq),
-            Token::NotEq => Ok(Operator::NotEq),
-            Token::Lparen => Ok(Operator::Lparen),
-            _ => bail!("Token cannot be converted into operator"),
-        }
-    }
-}
+// impl TryFrom<&Token<'_>> for Operator {
+//     type Error = anyhow::Error;
+//
+//     fn try_from(value: &Token) -> Result<Self, Self::Error> {
+//         match value {
+//             Token::Plus => Ok(Operator::Plus),
+//             Token::Minus => Ok(Operator::Minus),
+//             Token::Bang => Ok(Operator::Bang),
+//             Token::Asterisk => Ok(Operator::Asterisk),
+//             Token::Slash => Ok(Operator::Slash),
+//             Token::Lt => Ok(Operator::Lt),
+//             Token::Gt => Ok(Operator::Gt),
+//             Token::Eq => Ok(Operator::Eq),
+//             Token::NotEq => Ok(Operator::NotEq),
+//             Token::Lparen => Ok(Operator::Lparen),
+//             _ => bail!("Token cannot be converted into operator"),
+//         }
+//     }
+// }
 
 // #[derive(Debug, PartialEq, Eq)]
 // pub enum Node {

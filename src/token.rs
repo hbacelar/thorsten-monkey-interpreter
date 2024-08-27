@@ -1,5 +1,11 @@
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Token {
+pub struct Token<'a> {
+    pub kind: TokenKind,
+    pub val: &'a str,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum TokenKind {
     //Keywords
     Let,
     Function,
@@ -11,8 +17,8 @@ pub enum Token {
 
     Illegal,
     Eof,
-    Ident(String),
-    Int(i32),
+    Ident,
+    Int,
     Comma,
     Semicolon,
     Lparen,
