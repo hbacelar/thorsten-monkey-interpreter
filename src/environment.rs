@@ -19,7 +19,7 @@ impl Environment {
     pub fn get(&self, k: &str) -> Option<&Object> {
         self.store
             .get(k)
-            .or_else(|| self.outer.as_ref().map(|out| out.get(k)).flatten())
+            .or_else(|| self.outer.as_ref().and_then(|out| out.get(k)))
     }
 
     pub fn set(&mut self, k: String, v: Object) -> Option<Object> {

@@ -12,7 +12,7 @@ pub struct Evaluator {}
 impl Evaluator {
     fn eval_node(node: &Node, env: &mut Environment) -> Result<Object> {
         match node {
-            Node::Program(program) => Self::eval_program(&program, env),
+            Node::Program(program) => Self::eval_program(program, env),
             Node::Expression(exp) => Self::eval_exp(exp, env),
             Node::Statement(stmt) => Self::eval_statment(stmt, env),
         }
@@ -113,7 +113,7 @@ impl Evaluator {
                 if condition.is_thruthy() {
                     Self::eval_block_statments(&exp.consequence, env)
                 } else if let Some(alternative) = &exp.alternative {
-                    Self::eval_block_statments(&alternative, env)
+                    Self::eval_block_statments(alternative, env)
                 } else {
                     Ok(Object::Null)
                 }
@@ -129,6 +129,7 @@ impl Evaluator {
                     let mut ext_env = Environment::new_with_outer(&func.env);
                     let args = args?;
 
+                    // TODO 2 many clones
                     for (idx, param) in func.arguments.iter().enumerate() {
                         if let Some(arg) = args.get(idx) {
                             ext_env.set(param.value.clone(), arg.clone());
