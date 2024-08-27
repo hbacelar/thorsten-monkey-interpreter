@@ -58,7 +58,6 @@ impl Token {
                 }
 
                 let condition = parser.parse_expression(OperatorPrecedence::Lowest)?;
-                dbg!(&parser.peek_token);
 
                 // if let Some(Token::Rparen) = parser.peek_token {
                 //     parser.next_token();
@@ -74,11 +73,29 @@ impl Token {
 
                 let consequence = parser.parse_block_statement()?;
 
-                Ok(Expression::IfExpression(IfExpression {
-                    condition: Box::new(condition),
-                    consequence,
-                    alternative: None,
-                }))
+                if let Some(Token::Else) = parser.peek_token {
+                    parser.next_token();
+
+                    if let Some(Token::Lbrace) = parser.peek_token {
+                        parser.next_token();
+                    } else {
+                        bail!("left brace parentesis not found after if");
+                    }
+
+                    let alternative = parser.parse_block_statement()?;
+
+                    Ok(Expression::IfExpression(IfExpression {
+                        condition: Box::new(condition),
+                        consequence,
+                        alternative: Some(alternative),
+                    }))
+                } else {
+                    Ok(Expression::IfExpression(IfExpression {
+                        condition: Box::new(condition),
+                        consequence,
+                        alternative: None,
+                    }))
+                }
             }
             _ => bail!("test broken exp {:?}", &self),
         }
@@ -693,6 +710,83 @@ let foobar = 838383;
                                 test_identifier_exp(&exp.expression, "x".to_string())
                             }
                             _ => panic!("condition statment is not identifier expression"),
+                        }
+                    }
+                    _ => panic!("expression is not if expression"),
+                };
+            }
+            _ => panic!("Statment is not identifier expression"),
+        }
+    }
+
+    #[test]
+    fn test_if_else_expression() {
+        let input = "if (x < y) { x } else { y }";
+        let lexer = Lexer::new(input.to_string());
+        let parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(
+            1,
+            program.statments.len(),
+            "invalid number of statements: {}",
+            program.statments.len()
+        );
+        dbg!(&program);
+
+        let stmt = program.statments.get(0).unwrap();
+
+        match stmt {
+            Statement::Expression(exp) => {
+                match &exp.expression {
+                    Expression::IfExpression(if_exp) => {
+                        test_infix_exp(
+                            if_exp.condition.as_ref(),
+                            &Expression::Identifier(Identifier {
+                                value: "x".to_string(),
+                            }),
+                            Operator::Lt,
+                            &Expression::Identifier(Identifier {
+                                value: "y".to_string(),
+                            }),
+                        );
+
+                        assert_eq!(
+                            1,
+                            if_exp.consequence.statements.len(),
+                            "invalid number of consequence statements: {}",
+                            if_exp.consequence.statements.len(),
+                        );
+
+                        let stmt = if_exp
+                            .consequence
+                            .statements
+                            .get(0)
+                            .expect("invalid condition");
+
+                        match stmt {
+                            Statement::Expression(exp) => {
+                                test_identifier_exp(&exp.expression, "x".to_string())
+                            }
+                            _ => panic!("condition statment is not identifier expression"),
+                        }
+
+                        let alternative = if_exp.alternative.as_ref().unwrap();
+
+                        assert_eq!(
+                            1,
+                            alternative.statements.len(),
+                            "invalid number of alternative statements: {}",
+                            alternative.statements.len(),
+                        );
+                        let stmt = alternative.statements.get(0).expect("invalid condition");
+
+                        match stmt {
+                            Statement::Expression(exp) => {
+                                test_identifier_exp(&exp.expression, "y".to_string())
+                            }
+                            _ => panic!("alternative statment is not identifier expression"),
                         }
                     }
                     _ => panic!("expression is not if expression"),
