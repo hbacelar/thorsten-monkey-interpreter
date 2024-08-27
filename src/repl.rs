@@ -1,9 +1,7 @@
 use anyhow::{Context, Result};
 use std::io::{BufRead, Read, Write};
 
-use crate::lexer::Lexer;
-
-// use crate::{lexer::Lexer, parser::Parser};
+use crate::{lexer::Lexer, parser::Parser};
 
 pub struct Repl<R, W> {
     reader: R,
@@ -28,19 +26,16 @@ where
                 .context("failed to read line")?;
 
             let lexer = Lexer::new(&buffer);
-            for token in lexer {
-                writeln!(self.writer, "Token {:?}", token).context("unable to write to stdout")?;
+            let parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+            if !program.errors.is_empty() {
+                for err in program.errors {
+                    writeln!(self.writer, "Error {}", err).context("unable to write to stdout")?;
+                }
+            } else {
+                writeln!(self.writer, "{:?}", program.statments).context("unable to write to stdout")?;
             }
-            // let parser = Parser::new(lexer);
-            //
-            // let program = parser.parse_program();
-            // if !program.errors.is_empty() {
-            //     for err in program.errors {
-            //         writeln!(self.writer, "Error {}", err).context("unable to write to stdout")?;
-            //     }
-            // } else {
-            //     writeln!(self.writer, "{:?}", program.statments).context("unable to write to stdout")?;
-            // }
             writeln!(self.writer, "EOF").context("unable to write to stdout")?;
         }
     }
