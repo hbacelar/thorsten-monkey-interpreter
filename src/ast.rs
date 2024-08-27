@@ -41,12 +41,19 @@ pub enum Expression {
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
     IfExpression(IfExpression),
+    CallExpression(CallExpression),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum CallableExpression {
     Identifier(Identifier),
     FunctionLiteral(FunctionLiteral),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct CallExpression {
+    pub func: CallableExpression,
+    pub arguments: Vec<Expression>
 }
 
 #[derive(Debug, PartialEq, Eq)]

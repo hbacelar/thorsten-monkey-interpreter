@@ -372,8 +372,10 @@ mod tests {
     use core::panic;
     use std::mem;
 
+    use anyhow::bail;
+
     use crate::{
-        ast::{CallableExpression, Expression, Identifier, Operator, Statement},
+        ast::{CallableExpression, Expression, Identifier, IntegerLiteral, Operator, Statement},
         lexer::Lexer,
     };
 
@@ -922,6 +924,63 @@ let foobar = 838383;
                         ),
                         _ => panic!("body statment is not identifier expression"),
                     }
+                }
+                _ => panic!("Expression is not a function"),
+            },
+            _ => panic!("Statment is not identifier expression"),
+        }
+    }
+
+    #[test]
+    fn test_call_expression() {
+        let input = "add(1, 2 * 3, 4 + 5)";
+        let lexer = Lexer::new(input.to_string());
+        let parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(
+            1,
+            program.statments.len(),
+            "invalid number of statements: {}",
+            program.statments.len()
+        );
+
+        let stmt = program.statments.get(0).unwrap();
+
+        match stmt {
+            Statement::Expression(exp) => match &exp.expression {
+                Expression::CallExpression(call_expression) => {
+                    match &call_expression.func {
+                        CallableExpression::Identifier(ident) => {
+                            assert_eq!(
+                                ident,
+                                &Identifier {
+                                    value: "add".to_string()
+                                }
+                            )
+                        }
+                        _ => panic!("func is not an identifier"),
+                    };
+                    assert_eq!(
+                        3,
+                        call_expression.arguments.len(),
+                        "invalid number of arguments: {}",
+                        call_expression.arguments.len(),
+                    );
+                    test_int_literal(call_expression.arguments.get(0).unwrap(), 1);
+                    test_infix_exp(
+                        call_expression.arguments.get(1).unwrap(),
+                        &Expression::IntegerLiteral(IntegerLiteral { value: 2 }),
+                        Operator::Asterisk,
+                        &Expression::IntegerLiteral(IntegerLiteral { value: 3 }),
+                    );
+                    test_infix_exp(
+                        call_expression.arguments.get(2).unwrap(),
+                        &Expression::IntegerLiteral(IntegerLiteral { value: 4 }),
+                        Operator::Plus,
+                        &Expression::IntegerLiteral(IntegerLiteral { value: 5 }),
+                    );
                 }
                 _ => panic!("Expression is not a function"),
             },
