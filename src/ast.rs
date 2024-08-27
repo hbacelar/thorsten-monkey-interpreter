@@ -36,6 +36,7 @@ pub enum Expression {
     Identifier(Identifier),
     IntegerLiteral(IntegerLiteral),
     BooleanLiteral(BooleanLiteral),
+    FunctionLiteral(FunctionLiteral),
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
     IfExpression(IfExpression),
@@ -78,6 +79,12 @@ pub struct BooleanLiteral {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct FunctionLiteral {
+    pub body: BlockStatement,
+    pub parameters: Vec<Identifier>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct PrefixExpression {
     // TODO use arenas, and vec based index on nodes
     pub right: Box<Expression>,
@@ -99,6 +106,7 @@ pub struct IfExpression {
     pub consequence: BlockStatement,
     pub alternative: Option<BlockStatement>,
 }
+
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Operator {
@@ -132,9 +140,9 @@ impl TryFrom<&Token> for Operator {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum Node {
-    Program(Program),
-    Statement(Statement),
-    Expression(Expression),
-}
+// #[derive(Debug, PartialEq, Eq)]
+// pub enum Node {
+//     Program(Program),
+//     Statement(Statement),
+//     Expression(Expression),
+// }

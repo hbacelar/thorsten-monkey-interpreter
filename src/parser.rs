@@ -2,9 +2,9 @@ use std::mem;
 
 use crate::{
     ast::{
-        BlockStatement, Expression, ExpressionStatement, Identifier, IfExpression, InfixExpression,
-        IntegerLiteral, LetStatement, Operator, PrefixExpression, Program, ReturnStatement,
-        Statement,
+        BlockStatement, Expression, ExpressionStatement, FunctionLiteral, Identifier, IfExpression,
+        InfixExpression, IntegerLiteral, LetStatement, Operator, PrefixExpression, Program,
+        ReturnStatement, Statement,
     },
     lexer::Lexer,
     token::Token,
@@ -47,8 +47,29 @@ impl Token {
                     parser.next_token();
                     exp
                 } else {
-                    bail!("right parentesis not found after left");
+                    bail!("right parentesis not found after left")
                 }
+            }
+            Token::Function => {
+                if let Some(Token::Lparen) = parser.peek_token {
+                    parser.next_token();
+                } else {
+                    bail!("left parentesis not found after if");
+                }
+                let parameters = parser.parse_func_params()?;
+
+                if let Some(Token::Lbrace) = parser.peek_token {
+                    parser.next_token();
+                } else {
+                    bail!("left brace parentesis not found after if");
+                }
+
+                let body = parser.parse_block_statement()?;
+
+                Ok(Expression::FunctionLiteral(FunctionLiteral {
+                    body,
+                    parameters,
+                }))
             }
             Token::If => {
                 if let Some(Token::Lparen) = parser.peek_token {
@@ -238,6 +259,45 @@ impl Parser {
         Ok(block_statement)
     }
 
+    fn parse_func_params(&mut self) -> Result<Vec<Identifier>> {
+        let mut identifiers = Vec::new();
+        self.next_token();
+
+        if let Some(Token::Rparen) = self.current_token {
+            self.next_token();
+            return Ok(identifiers);
+        }
+
+        match &self.current_token {
+            Some(Token::Ident(ident)) => identifiers.push(Identifier {
+                value: ident.clone(),
+            }),
+            _ => bail!("identifier not found for parameters"),
+        };
+
+        while self.peek_token.is_some() {
+            if let Some(Token::Comma) = self.peek_token {
+                self.next_token();
+                self.next_token();
+
+                match &self.current_token {
+                    Some(Token::Ident(ident)) => identifiers.push(Identifier {
+                        value: ident.clone(),
+                    }),
+                    _ => bail!("identifier not found for parameters"),
+                };
+            } else {
+                break;
+            }
+        }
+
+        if let Some(Token::Rparen) = self.peek_token {
+            self.next_token();
+            return Ok(identifiers);
+        }
+        bail!("lparen not found after params");
+    }
+
     fn parse_expression(&mut self, precedence: OperatorPrecedence) -> Result<Expression> {
         if let Some(token) = &self.current_token {
             let curr_token = token.clone();
@@ -310,7 +370,7 @@ mod tests {
     use std::mem;
 
     use crate::{
-        ast::{Expression, ExpressionStatement, Identifier, Operator, Statement},
+        ast::{Expression, Identifier, Operator, Statement},
         lexer::Lexer,
     };
 
@@ -672,7 +732,6 @@ let foobar = 838383;
             "invalid number of statements: {}",
             program.statments.len()
         );
-        dbg!(&program);
 
         let stmt = program.statments.get(0).unwrap();
 
@@ -733,7 +792,6 @@ let foobar = 838383;
             "invalid number of statements: {}",
             program.statments.len()
         );
-        dbg!(&program);
 
         let stmt = program.statments.get(0).unwrap();
 
@@ -792,6 +850,66 @@ let foobar = 838383;
                     _ => panic!("expression is not if expression"),
                 };
             }
+            _ => panic!("Statment is not identifier expression"),
+        }
+    }
+
+    #[test]
+    fn test_function_literal() {
+        let input = "fn (x, y) {x + y;}";
+        let lexer = Lexer::new(input.to_string());
+        let parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(
+            1,
+            program.statments.len(),
+            "invalid number of statements: {}",
+            program.statments.len()
+        );
+
+        let stmt = program.statments.get(0).unwrap();
+
+        match stmt {
+            Statement::Expression(exp) => match &exp.expression {
+                Expression::FunctionLiteral(function) => {
+                    assert_eq!(
+                        2,
+                        function.parameters.len(),
+                        "invalid number of parameters: {}",
+                        function.parameters.len(),
+                    );
+                    let param = function.parameters.get(0).unwrap();
+                    assert_eq!("x", param.value);
+                    let param = function.parameters.get(1).unwrap();
+                    assert_eq!("y", param.value);
+
+                    assert_eq!(
+                        1,
+                        function.body.statements.len(),
+                        "invalid number of body statments: {}",
+                        function.body.statements.len(),
+                    );
+
+                    let stmt = function.body.statements.get(0).expect("invalid body");
+
+                    match stmt {
+                        Statement::Expression(exp) => test_infix_exp(
+                            &exp.expression,
+                            &Expression::Identifier(Identifier {
+                                value: "x".to_string(),
+                            }),
+                            Operator::Plus,
+                            &Expression::Identifier(Identifier {
+                                value: "y".to_string(),
+                            }),
+                        ),
+                        _ => panic!("body statment is not identifier expression"),
+                    }
+                }
+                _ => panic!("Expression is not a function"),
+            },
             _ => panic!("Statment is not identifier expression"),
         }
     }
