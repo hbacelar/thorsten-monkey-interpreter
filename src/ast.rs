@@ -17,11 +17,13 @@ impl Program {
 pub enum Statement {
     LetStatement(LetStatement),
     ReturnStatement(ReturnStatement),
+    ExpressionStatement(ExpressionStatement),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Expression {
     Identifier(Identifier),
+    IntegerLiteral(IntegerLiteral)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -36,8 +38,18 @@ pub struct ReturnStatement {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct ExpressionStatement {
+    pub expression: Expression,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct Identifier {
     pub value: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct IntegerLiteral {
+    pub value: i32,
 }
 
 #[derive(Debug, PartialEq, Eq)]
