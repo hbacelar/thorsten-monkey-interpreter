@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expression, Node, Operator, Program, Statement},
+    ast::{BlockStatement, Expression, Node, Operator, Program, Statement},
     object::Object,
 };
 use anyhow::{bail, Result};
@@ -9,7 +9,7 @@ pub struct Evaluator {}
 impl Evaluator {
     fn eval_node(node: &Node) -> Result<Object> {
         match node {
-            Node::Program(program) => Self::eval_statments(&program.statments),
+            Node::Program(program) => Self::eval_program(&program),
             Node::Expression(exp) => Self::eval_exp(exp),
             Node::Statement(stmt) => Self::eval_statment(stmt),
         }
@@ -68,9 +68,9 @@ impl Evaluator {
             Expression::If(exp) => {
                 let condition = Self::eval_exp(&exp.condition)?;
                 if condition.is_thruthy() {
-                    Self::eval_statments(&exp.consequence.statements)
+                    Self::eval_block_statments(&exp.consequence)
                 } else if let Some(alternative) = &exp.alternative {
-                    Self::eval_statments(&alternative.statements)
+                    Self::eval_block_statments(&alternative)
                 } else {
                     Ok(Object::Null)
                 }
@@ -83,17 +83,39 @@ impl Evaluator {
     fn eval_statment(stmt: &Statement) -> Result<Object> {
         match stmt {
             Statement::Expression(exp) => Self::eval_exp(&exp.expression),
+            Statement::Return(r) => {
+                let val = Self::eval_exp(&r.value)?;
+                Ok(Object::ReturnValue(Box::new(val)))
+            },
             Statement::Block(_) => todo!(),
             Statement::Let(_) => todo!(),
-            Statement::Return(_) => todo!(),
         }
     }
 
-    fn eval_statments(stmts: &Vec<Statement>) -> Result<Object> {
+    fn eval_program(program: &Program) -> Result<Object> {
         let mut obj = None;
 
-        for stmt in stmts {
+        for stmt in &program.statments {
             obj = Some(Self::eval_statment(stmt)?);
+            if let Some(Object::ReturnValue(r)) = obj {
+                return Ok(*r);
+            }
+        }
+
+        if let Some(obj) = obj {
+            return Ok(obj);
+        }
+        bail!("empty statments");
+    }
+    
+    fn eval_block_statments(block: &BlockStatement) -> Result<Object> {
+        let mut obj = None;
+
+        for stmt in &block.statements {
+            obj = Some(Self::eval_statment(stmt)?);
+            if let Some(Object::ReturnValue(_)) = obj {
+                return Ok(obj.unwrap());
+            }
         }
 
         if let Some(obj) = obj {
@@ -298,6 +320,41 @@ mod tests {
             },
             ObjectTest {
                 input: "if (1 < 2) { 10 } else { 20 }",
+                expected: Object::Integer(10),
+            },
+        ];
+
+        for test in tests {
+            let obj = test_eval(test.input).unwrap();
+            assert_eq!(
+                obj, test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj, test.expected
+            );
+        }
+    }
+    
+    #[test]
+    fn test_return_statments() {
+        let tests = vec![
+            ObjectTest {
+                input: "return 10;",
+                expected: Object::Integer(10),
+            },
+            ObjectTest {
+                input: "return 10; 9;",
+                expected: Object::Integer(10),
+            },
+            ObjectTest {
+                input: "return 2 * 5; 9;",
+                expected: Object::Integer(10),
+            },
+            ObjectTest {
+                input: "9; return 2 * 5; 6;",
+                expected: Object::Integer(10),
+            },
+            ObjectTest {
+                input: "if (10 > 1) { if (10 > 1) {return 10;} return 1;}",
                 expected: Object::Integer(10),
             },
         ];

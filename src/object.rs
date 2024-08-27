@@ -1,9 +1,10 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Object {
     Integer(i64),
     Boolean(bool),
+    ReturnValue(Box<Object>),
     Null,
 }
 
@@ -13,6 +14,7 @@ impl Object {
             Object::Integer(_) => true,
             Object::Boolean(b) => *b,
             Object::Null => false,
+            Object::ReturnValue(obj) => obj.is_thruthy(),
         }
     }
 }
@@ -29,6 +31,7 @@ impl Display for Object {
                 }
             }
             Object::Null => write!(f, "null"),
+            Object::ReturnValue(obj) => std::fmt::Display::fmt(&obj, f),
         }
     }
 }
