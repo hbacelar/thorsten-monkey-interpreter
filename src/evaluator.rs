@@ -19,7 +19,7 @@ impl Evaluator {
         match exp {
             Expression::Callable(_) => todo!(),
             Expression::IntegerLiteral(int) => Ok(Object::Integer(int.value)),
-            Expression::BooleanLiteral(_) => todo!(),
+            Expression::BooleanLiteral(b) => Ok(Object::Boolean(b.value)),
             Expression::Prefix(_) => todo!(),
             Expression::Infix(_) => todo!(),
             Expression::If(_) => todo!(),
@@ -92,6 +92,29 @@ mod tests {
             ObjectTest {
                 input: "10",
                 expected: Object::Integer(10),
+            },
+        ];
+
+        for test in tests {
+            let obj = test_eval(test.input).unwrap();
+            assert_eq!(
+                obj, test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj, test.expected
+            );
+        }
+    }
+    
+    #[test]
+    fn test_eval_bool_expression() {
+        let tests = vec![
+            ObjectTest {
+                input: "true",
+                expected: Object::Boolean(true),
+            },
+            ObjectTest {
+                input: "false",
+                expected: Object::Boolean(false),
             },
         ];
 
