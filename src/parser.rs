@@ -32,6 +32,12 @@ impl Token {
                 }))
             }
             Token::Int(value) => Ok(Expression::IntegerLiteral(IntegerLiteral { value: *value })),
+            Token::True => Ok(Expression::BooleanLiteral(crate::ast::BooleanLiteral {
+                value: true,
+            })),
+            Token::False => Ok(Expression::BooleanLiteral(crate::ast::BooleanLiteral {
+                value: false,
+            })),
             _ => bail!("test broken exp"),
         }
     }
@@ -270,6 +276,40 @@ mod tests {
         }
     }
 
+    pub fn test_bool_literal(exp: &Expression, val: bool) {
+        match exp {
+            Expression::BooleanLiteral(bool) => {
+                assert_eq!(bool.value, val);
+            }
+            _ => panic!("expression is not bool literal"),
+        }
+    }
+
+    pub fn test_identifier_exp(exp: &Expression, val: String) {
+        match exp {
+            Expression::Identifier(ident) => {
+                assert_eq!(ident.value, val);
+            }
+            _ => panic!("expression is not identifier"),
+        }
+    }
+
+    pub fn test_infix_exp(
+        exp: &Expression,
+        left: &Expression,
+        operator: Operator,
+        right: &Expression,
+    ) {
+        match exp {
+            Expression::InfixExpression(exp) => {
+                assert_eq!(exp.left.as_ref(), left);
+                assert_eq!(exp.right.as_ref(), right);
+                assert_eq!(exp.operator, operator);
+            }
+            _ => panic!("expression is not identifier"),
+        }
+    }
+
     #[test]
     fn test_return_statements() {
         let input = "
@@ -354,12 +394,9 @@ let foobar = 838383;
         let stmt = program.statments.get(0).unwrap();
 
         match stmt {
-            Statement::Expression(exp) => match &exp.expression {
-                Expression::Identifier(ident) => {
-                    assert_eq!(ident.value, "foobar".to_string());
-                }
-                _ => panic!("Statment is not identifier expression"),
-            },
+            Statement::Expression(exp) => {
+                test_identifier_exp(&exp.expression, "foobar".to_string())
+            }
             _ => panic!("Statment is not identifier expression"),
         }
     }
@@ -384,6 +421,31 @@ let foobar = 838383;
         match stmt {
             Statement::Expression(exp) => {
                 test_int_literal(&exp.expression, 5);
+            }
+            _ => panic!("Statment is not identifier expression"),
+        }
+    }
+
+    #[test]
+    fn test_bool_literal_expression() {
+        let input = "true;";
+        let lexer = Lexer::new(input.to_string());
+        let parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(
+            1,
+            program.statments.len(),
+            "invalid number of statements: {}",
+            program.statments.len()
+        );
+
+        let stmt = program.statments.get(0).unwrap();
+
+        match stmt {
+            Statement::Expression(exp) => {
+                test_bool_literal(&exp.expression, true);
             }
             _ => panic!("Statment is not identifier expression"),
         }
