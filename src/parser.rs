@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    ast::{Expression, Identifier, LetStatement, Program, Statement},
+    ast::{Expression, Identifier, LetStatement, Program, ReturnStatement, Statement},
     lexer::Lexer,
     token::Token,
 };
@@ -44,12 +44,14 @@ impl Parser {
             if let Some(Token::Assign) = self.peek_token {
                 self.next_token();
 
+                // TODO continue
                 loop {
                     self.next_token();
                     if let Some(Token::Semicolon) = self.current_token {
                         break;
                     }
                 }
+
                 let statement = Ok(Statement::LetStatement(LetStatement {
                     name,
                     value: Expression::Identifier(Identifier {
@@ -62,9 +64,26 @@ impl Parser {
         bail!("expected token to be ident got: {:?}", self.peek_token);
     }
 
+    fn parse_return_statement(&mut self) -> Result<Statement> {
+        // TODO continue
+        loop {
+            self.next_token();
+            if let Some(Token::Semicolon) = self.current_token {
+                break;
+            }
+        }
+        let statement = Ok(Statement::ReturnStatement(ReturnStatement {
+            value: Expression::Identifier(Identifier {
+                value: "todo".to_string(),
+            }),
+        }));
+        return statement;
+    }
+
     fn parse_statement(&mut self) -> Result<Statement> {
         match self.current_token {
             Some(Token::Let) => self.parse_let_statement(),
+            Some(Token::Return) => self.parse_return_statement(),
             _ => todo!(),
         }
     }
@@ -74,12 +93,8 @@ impl Parser {
 
         while let Some(_) = self.current_token {
             match self.parse_statement() {
-                Ok(stmt) => {
-                    p.statments.push(stmt)
-                },
-                Err(err) => {
-                    p.errors.push(err.to_string())
-                },
+                Ok(stmt) => p.statments.push(stmt),
+                Err(err) => p.errors.push(err.to_string()),
             }
             self.next_token();
         }
@@ -107,6 +122,35 @@ mod tests {
             );
         } else {
             assert!(false, "statment was not let: {:?}", statement);
+        }
+    }
+
+    #[test]
+    fn test_return_statements() {
+        let input = "
+return 5;
+return 10;
+return 838383;
+";
+        let lexer = Lexer::new(input.to_string());
+        let parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(
+            3,
+            program.statments.len(),
+            "invalid number of statements: {}",
+            program.statments.len()
+        );
+
+        for stmt in program.statments {
+            match stmt {
+                Statement::ReturnStatement(_) => continue,
+                _ => {
+                    panic!("Not found return statement")
+                }
+            };
         }
     }
 
