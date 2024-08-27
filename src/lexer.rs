@@ -111,7 +111,7 @@ impl Lexer {
                         "true" => Token::True,
                         "false" => Token::False,
                         "return" => Token::Return,
-                        _ => Token::Ident(ident),
+                        _ => Token::Ident(ident.to_string()),
                     };
                     return Some(tok);
                 } else if ch.is_numeric() {
@@ -160,39 +160,39 @@ if (5 < 10) {
 ";
         let tokens = vec![
             Token::Let,
-            Token::Ident("five"),
+            Token::Ident("five".to_string()),
             Token::Assign,
             Token::Int(5),
             Token::Semicolon,
             Token::Let,
-            Token::Ident("ten"),
+            Token::Ident("ten".to_string()),
             Token::Assign,
             Token::Int(10),
             Token::Semicolon,
             Token::Let,
-            Token::Ident("add"),
+            Token::Ident("add".to_string()),
             Token::Assign,
             Token::Function,
             Token::Lparen,
-            Token::Ident("x"),
+            Token::Ident("x".to_string()),
             Token::Comma,
-            Token::Ident("y"),
+            Token::Ident("y".to_string()),
             Token::Rparen,
             Token::Lbrace,
-            Token::Ident("x"),
+            Token::Ident("x".to_string()),
             Token::Plus,
-            Token::Ident("y"),
+            Token::Ident("y".to_string()),
             Token::Semicolon,
             Token::Rbrace,
             Token::Semicolon,
             Token::Let,
-            Token::Ident("result"),
+            Token::Ident("result".to_string()),
             Token::Assign,
-            Token::Ident("add"),
+            Token::Ident("add".to_string()),
             Token::Lparen,
-            Token::Ident("five"),
+            Token::Ident("five".to_string()),
             Token::Comma,
-            Token::Ident("ten"),
+            Token::Ident("ten".to_string()),
             Token::Rparen,
             Token::Semicolon,
             Token::Bang,
@@ -235,7 +235,6 @@ if (5 < 10) {
         ];
 
         let mut lexer = Lexer::new(input.to_string());
-
         for (index, tt) in tokens.into_iter().enumerate() {
             let token = lexer.next_token().unwrap();
 

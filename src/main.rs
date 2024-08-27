@@ -1,4 +1,4 @@
-use anyhow::{Result};
+use anyhow::Result;
 use thorsten_interpreter::repl::Repl;
 use std::io::{self};
 
