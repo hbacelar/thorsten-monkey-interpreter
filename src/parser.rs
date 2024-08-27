@@ -2,9 +2,9 @@ use std::mem;
 
 use crate::{
     ast::{
-        BlockStatement, Expression, ExpressionStatement, FunctionLiteral, Identifier, IfExpression,
-        InfixExpression, IntegerLiteral, LetStatement, Operator, PrefixExpression, Program,
-        ReturnStatement, Statement,
+        BlockStatement, CallableExpression, Expression, ExpressionStatement, FunctionLiteral,
+        Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement, Operator,
+        PrefixExpression, Program, ReturnStatement, Statement,
     },
     lexer::Lexer,
     token::Token,
@@ -20,9 +20,11 @@ pub struct Parser {
 impl Token {
     fn prefix_parse(&self, parser: &mut Parser) -> Result<Expression> {
         match &self {
-            Token::Ident(ident) => Ok(Expression::Identifier(Identifier {
-                value: ident.clone(),
-            })),
+            Token::Ident(ident) => Ok(Expression::CallableExpression(
+                CallableExpression::Identifier(Identifier {
+                    value: ident.clone(),
+                }),
+            )),
             Token::Bang | Token::Minus => {
                 parser.next_token();
 
@@ -66,10 +68,9 @@ impl Token {
 
                 let body = parser.parse_block_statement()?;
 
-                Ok(Expression::FunctionLiteral(FunctionLiteral {
-                    body,
-                    parameters,
-                }))
+                Ok(Expression::CallableExpression(
+                    CallableExpression::FunctionLiteral(FunctionLiteral { body, parameters }),
+                ))
             }
             Token::If => {
                 if let Some(Token::Lparen) = parser.peek_token {
@@ -217,9 +218,11 @@ impl Parser {
 
                 let statement = Ok(Statement::Let(LetStatement {
                     name,
-                    value: Expression::Identifier(Identifier {
-                        value: "todo".to_string(),
-                    }),
+                    value: Expression::CallableExpression(CallableExpression::Identifier(
+                        Identifier {
+                            value: "todo".to_string(),
+                        },
+                    )),
                 }));
                 return statement;
             }
@@ -236,9 +239,9 @@ impl Parser {
             }
         }
         Ok(Statement::Return(ReturnStatement {
-            value: Expression::Identifier(Identifier {
+            value: Expression::CallableExpression(CallableExpression::Identifier(Identifier {
                 value: "todo".to_string(),
-            }),
+            })),
         }))
     }
 
@@ -370,7 +373,7 @@ mod tests {
     use std::mem;
 
     use crate::{
-        ast::{Expression, Identifier, Operator, Statement},
+        ast::{CallableExpression, Expression, Identifier, Operator, Statement},
         lexer::Lexer,
     };
 
@@ -423,7 +426,7 @@ mod tests {
 
     pub fn test_identifier_exp(exp: &Expression, val: String) {
         match exp {
-            Expression::Identifier(ident) => {
+            Expression::CallableExpression(CallableExpression::Identifier(ident)) => {
                 assert_eq!(ident.value, val);
             }
             _ => panic!("expression is not identifier"),
@@ -741,13 +744,17 @@ let foobar = 838383;
                     Expression::IfExpression(if_exp) => {
                         test_infix_exp(
                             if_exp.condition.as_ref(),
-                            &Expression::Identifier(Identifier {
-                                value: "x".to_string(),
-                            }),
+                            &Expression::CallableExpression(CallableExpression::Identifier(
+                                Identifier {
+                                    value: "x".to_string(),
+                                },
+                            )),
                             Operator::Lt,
-                            &Expression::Identifier(Identifier {
-                                value: "y".to_string(),
-                            }),
+                            &Expression::CallableExpression(CallableExpression::Identifier(
+                                Identifier {
+                                    value: "y".to_string(),
+                                },
+                            )),
                         );
 
                         assert_eq!(
@@ -801,13 +808,17 @@ let foobar = 838383;
                     Expression::IfExpression(if_exp) => {
                         test_infix_exp(
                             if_exp.condition.as_ref(),
-                            &Expression::Identifier(Identifier {
-                                value: "x".to_string(),
-                            }),
+                            &Expression::CallableExpression(CallableExpression::Identifier(
+                                Identifier {
+                                    value: "x".to_string(),
+                                },
+                            )),
                             Operator::Lt,
-                            &Expression::Identifier(Identifier {
-                                value: "y".to_string(),
-                            }),
+                            &Expression::CallableExpression(CallableExpression::Identifier(
+                                Identifier {
+                                    value: "y".to_string(),
+                                },
+                            )),
                         );
 
                         assert_eq!(
@@ -873,7 +884,7 @@ let foobar = 838383;
 
         match stmt {
             Statement::Expression(exp) => match &exp.expression {
-                Expression::FunctionLiteral(function) => {
+                Expression::CallableExpression(CallableExpression::FunctionLiteral(function)) => {
                     assert_eq!(
                         2,
                         function.parameters.len(),
@@ -897,13 +908,17 @@ let foobar = 838383;
                     match stmt {
                         Statement::Expression(exp) => test_infix_exp(
                             &exp.expression,
-                            &Expression::Identifier(Identifier {
-                                value: "x".to_string(),
-                            }),
+                            &Expression::CallableExpression(CallableExpression::Identifier(
+                                Identifier {
+                                    value: "x".to_string(),
+                                },
+                            )),
                             Operator::Plus,
-                            &Expression::Identifier(Identifier {
-                                value: "y".to_string(),
-                            }),
+                            &Expression::CallableExpression(CallableExpression::Identifier(
+                                Identifier {
+                                    value: "y".to_string(),
+                                },
+                            )),
                         ),
                         _ => panic!("body statment is not identifier expression"),
                     }

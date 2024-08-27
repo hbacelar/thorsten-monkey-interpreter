@@ -33,13 +33,20 @@ pub enum Statement {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Expression {
-    Identifier(Identifier),
+    // Identifier(Identifier),
+    // FunctionLiteral(FunctionLiteral),
+    CallableExpression(CallableExpression),
     IntegerLiteral(IntegerLiteral),
     BooleanLiteral(BooleanLiteral),
-    FunctionLiteral(FunctionLiteral),
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
     IfExpression(IfExpression),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum CallableExpression {
+    Identifier(Identifier),
+    FunctionLiteral(FunctionLiteral),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -106,7 +113,6 @@ pub struct IfExpression {
     pub consequence: BlockStatement,
     pub alternative: Option<BlockStatement>,
 }
-
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Operator {
