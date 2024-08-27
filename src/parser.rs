@@ -2,8 +2,8 @@ use std::mem;
 
 use crate::{
     ast::{
-        Expression, ExpressionStatement, Identifier, IntegerLiteral, LetStatement, Operator,
-        PrefixExpression, Program, ReturnStatement, Statement,
+        Expression, ExpressionStatement, Identifier, InfixExpression, IntegerLiteral, LetStatement,
+        Operator, PrefixExpression, Program, ReturnStatement, Statement,
     },
     lexer::Lexer,
     token::Token,
@@ -22,22 +22,13 @@ impl Token {
             Token::Ident(ident) => Ok(Expression::Identifier(Identifier {
                 value: ident.clone(),
             })),
-            Token::Bang => {
+            Token::Bang | Token::Minus => {
                 parser.next_token();
 
                 let right = parser.parse_expression(OperatorPrecedence::Prefix)?;
                 Ok(Expression::PrefixExpression(PrefixExpression {
                     right: Box::new(right),
-                    operator: Operator::Bang,
-                }))
-            }
-            Token::Minus => {
-                parser.next_token();
-
-                let right = parser.parse_expression(OperatorPrecedence::Prefix)?;
-                Ok(Expression::PrefixExpression(PrefixExpression {
-                    right: Box::new(right),
-                    operator: Operator::Minus,
+                    operator: self.try_into()?,
                 }))
             }
             Token::Int(value) => Ok(Expression::IntegerLiteral(IntegerLiteral { value: *value })),
@@ -45,12 +36,34 @@ impl Token {
         }
     }
 
-    fn infix_parse(&self, exp: &Expression) -> Option<Expression> {
-        None
+    fn infix_parse(&self, left: Expression, parser: &mut Parser) -> Result<Expression> {
+        match &self {
+            Token::Plus
+            | Token::Minus
+            | Token::Asterisk
+            | Token::Slash
+            | Token::Lt
+            | Token::Gt
+            | Token::Eq
+            | Token::NotEq => {
+                let op: Operator = self.try_into()?;
+                let precedence: OperatorPrecedence = (&op).into();
+
+                parser.next_token();
+                parser.next_token();
+                let right = parser.parse_expression(precedence)?;
+                Ok(Expression::InfixExpression(InfixExpression {
+                    right: Box::new(right),
+                    left: Box::new(left),
+                    operator: op,
+                }))
+            }
+            _ => Ok(left),
+        }
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum OperatorPrecedence {
     Lowest = 0,
     Equals = 1,
@@ -59,6 +72,22 @@ enum OperatorPrecedence {
     Product = 4,
     Prefix = 5,
     Call = 6,
+}
+
+impl From<&Operator> for OperatorPrecedence {
+    fn from(value: &Operator) -> Self {
+        match value {
+            Operator::Minus => Self::Sum,
+            Operator::Plus => Self::Sum,
+            Operator::Asterisk => Self::Product,
+            Operator::Slash => Self::Product,
+            Operator::Eq => Self::Equals,
+            Operator::NotEq => Self::Equals,
+            Operator::Lt => Self::LessGreater,
+            Operator::Gt => Self::LessGreater,
+            _ => Self::Lowest,
+        }
+    }
 }
 
 impl Parser {
@@ -127,11 +156,53 @@ impl Parser {
         }))
     }
 
-    fn parse_expression(&mut self, _precedence: OperatorPrecedence) -> Result<Expression> {
+    fn parse_expression(&mut self, precedence: OperatorPrecedence) -> Result<Expression> {
         if let Some(token) = &self.current_token {
             // TODO double mutable reference need fix
             let curr_token = token.clone();
-            return curr_token.prefix_parse(self);
+            let mut left = curr_token.prefix_parse(self)?;
+
+            loop {
+                if let Some(Token::Semicolon) = &self.current_token {
+                    break;
+                }
+                if let Some(peak_token) = &self.peek_token {
+                    let op: Result<Operator, _> = peak_token.try_into();
+                    if op.is_err() {
+                        break;
+                    }
+
+                    let peak_precedence: OperatorPrecedence = (&op.unwrap()).into();
+
+                    if precedence >= peak_precedence {
+                        break;
+                    }
+
+                    let curr_peak_token = peak_token.clone();
+                    // check this
+                    // self.next_token();
+                    left = curr_peak_token.infix_parse(left, self)?;
+
+                    // // TODO improve this
+                    // let curr_peak_token = peak_token.clone();
+                    // // VE SE A TOKEN SUPORTA INFIX
+                    // self.next_token();
+                    // let before = self.lexer.position;
+                    // left = curr_peak_token.infix_parse(left, self)?;
+                    // let after = self.lexer.position;
+                    //
+                    // if before == after {
+                    //     return Ok(left);
+                    // }
+                    // self.next_token();
+                } else {
+                    break;
+                }
+            }
+            return Ok(left);
+
+            // todo!();
+            // return curr_token.prefix_parse(self);
             // if let Ok(expression) = curr_token.prefix_parse(self) {
             //     return Ok(expression);
             // }
@@ -188,7 +259,7 @@ mod tests {
         pub operator: Operator,
         pub int: i32,
     }
-    
+
     struct InfixOperationTests {
         pub input: String,
         pub operator: Operator,
@@ -383,7 +454,7 @@ let foobar = 838383;
             }
         }
     }
-    
+
     #[test]
     fn test_infix_expressions() {
         let tests = vec![
@@ -467,5 +538,22 @@ let foobar = 838383;
                 _ => panic!("Statment is not identifier expression"),
             }
         }
+    }
+
+    #[test]
+    fn test_playground() {
+        let input = "a + b * c + d / e - f";
+        let lexer = Lexer::new(input.to_string());
+        let parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(
+            1,
+            program.statments.len(),
+            "invalid number of statements: {}",
+            program.statments.len()
+        );
+        dbg!(&program);
     }
 }

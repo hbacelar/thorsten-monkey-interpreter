@@ -1,3 +1,7 @@
+use anyhow::bail;
+
+use crate::token::Token;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Program {
     pub statments: Vec<Statement>,
@@ -65,8 +69,8 @@ pub struct PrefixExpression {
 #[derive(Debug, PartialEq, Eq)]
 pub struct InfixExpression {
     // TODO use arenas, and vec based index on nodes
-    pub right: Box<Expression>,
     pub left: Box<Expression>,
+    pub right: Box<Expression>,
     pub operator: Operator,
 }
 
@@ -81,6 +85,25 @@ pub enum Operator {
     NotEq,
     Lt,
     Gt
+}
+
+impl TryFrom<&Token> for Operator {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Token) -> Result<Self, Self::Error> {
+        match value {
+            Token::Plus => Ok( Operator::Plus),
+            Token::Minus => Ok(Operator::Minus),
+            Token::Bang => Ok(Operator::Bang),
+            Token::Asterisk => Ok(Operator::Asterisk),
+            Token::Slash => Ok(Operator::Slash),
+            Token::Lt => Ok(Operator::Lt),
+            Token::Gt => Ok(Operator::Gt),
+            Token::Eq => Ok(Operator::Eq),
+            Token::NotEq => Ok(Operator::NotEq),
+            _ => bail!("Token cannot be converted into operator")
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
