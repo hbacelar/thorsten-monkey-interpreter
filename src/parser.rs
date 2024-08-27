@@ -2,8 +2,9 @@ use std::mem;
 
 use crate::{
     ast::{
-        Expression, ExpressionStatement, Identifier, InfixExpression, IntegerLiteral, LetStatement,
-        Operator, PrefixExpression, Program, ReturnStatement, Statement,
+        BlockStatement, Expression, ExpressionStatement, Identifier, IfExpression, InfixExpression,
+        IntegerLiteral, LetStatement, Operator, PrefixExpression, Program, ReturnStatement,
+        Statement,
     },
     lexer::Lexer,
     token::Token,
@@ -43,12 +44,41 @@ impl Token {
                 let exp = parser.parse_expression(OperatorPrecedence::Lowest);
 
                 if let Some(Token::Rparen) = parser.peek_token {
-                    // check this next
                     parser.next_token();
                     exp
                 } else {
                     bail!("right parentesis not found after left");
                 }
+            }
+            Token::If => {
+                if let Some(Token::Lparen) = parser.peek_token {
+                    parser.next_token();
+                } else {
+                    bail!("left parentesis not found after if");
+                }
+
+                let condition = parser.parse_expression(OperatorPrecedence::Lowest)?;
+                dbg!(&parser.peek_token);
+
+                // if let Some(Token::Rparen) = parser.peek_token {
+                //     parser.next_token();
+                // } else {
+                //     bail!("right parentesis not found after if");
+                // }
+
+                if let Some(Token::Lbrace) = parser.peek_token {
+                    parser.next_token();
+                } else {
+                    bail!("left brace parentesis not found after if");
+                }
+
+                let consequence = parser.parse_block_statement()?;
+
+                Ok(Expression::IfExpression(IfExpression {
+                    condition: Box::new(condition),
+                    consequence,
+                    alternative: None,
+                }))
             }
             _ => bail!("test broken exp {:?}", &self),
         }
@@ -174,6 +204,23 @@ impl Parser {
         }))
     }
 
+    fn parse_block_statement(&mut self) -> Result<BlockStatement> {
+        let mut block_statement = BlockStatement {
+            statements: Vec::new(),
+        };
+        self.next_token();
+
+        while self.current_token.is_some() {
+            if let Some(Token::Rbrace) = self.current_token {
+                break;
+            }
+            let stmt = self.parse_statement()?;
+            block_statement.statements.push(stmt);
+            self.next_token();
+        }
+        Ok(block_statement)
+    }
+
     fn parse_expression(&mut self, precedence: OperatorPrecedence) -> Result<Expression> {
         if let Some(token) = &self.current_token {
             let curr_token = token.clone();
@@ -246,7 +293,7 @@ mod tests {
     use std::mem;
 
     use crate::{
-        ast::{Expression, Identifier, Operator, Statement},
+        ast::{Expression, ExpressionStatement, Identifier, Operator, Statement},
         lexer::Lexer,
     };
 
@@ -591,6 +638,67 @@ let foobar = 838383;
                 },
                 _ => panic!("Statment is not identifier expression"),
             }
+        }
+    }
+
+    #[test]
+    fn test_if_expression() {
+        let input = "if (x < y) { x }";
+        let lexer = Lexer::new(input.to_string());
+        let parser = Parser::new(lexer);
+
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(
+            1,
+            program.statments.len(),
+            "invalid number of statements: {}",
+            program.statments.len()
+        );
+        dbg!(&program);
+
+        let stmt = program.statments.get(0).unwrap();
+
+        match stmt {
+            Statement::Expression(exp) => {
+                match &exp.expression {
+                    Expression::IfExpression(if_exp) => {
+                        test_infix_exp(
+                            if_exp.condition.as_ref(),
+                            &Expression::Identifier(Identifier {
+                                value: "x".to_string(),
+                            }),
+                            Operator::Lt,
+                            &Expression::Identifier(Identifier {
+                                value: "y".to_string(),
+                            }),
+                        );
+
+                        assert_eq!(
+                            1,
+                            if_exp.consequence.statements.len(),
+                            "invalid number of consequence statements: {}",
+                            if_exp.consequence.statements.len(),
+                        );
+                        assert_eq!(None, if_exp.alternative);
+
+                        let stmt = if_exp
+                            .consequence
+                            .statements
+                            .get(0)
+                            .expect("invalid condition");
+
+                        match stmt {
+                            Statement::Expression(exp) => {
+                                test_identifier_exp(&exp.expression, "x".to_string())
+                            }
+                            _ => panic!("condition statment is not identifier expression"),
+                        }
+                    }
+                    _ => panic!("expression is not if expression"),
+                };
+            }
+            _ => panic!("Statment is not identifier expression"),
         }
     }
 

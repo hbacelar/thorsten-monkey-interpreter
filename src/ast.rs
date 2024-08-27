@@ -28,6 +28,7 @@ pub enum Statement {
     Let(LetStatement),
     Return(ReturnStatement),
     Expression(ExpressionStatement),
+    Block(BlockStatement),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -37,6 +38,7 @@ pub enum Expression {
     BooleanLiteral(BooleanLiteral),
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
+    IfExpression(IfExpression),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -53,6 +55,11 @@ pub struct ReturnStatement {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ExpressionStatement {
     pub expression: Expression,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct BlockStatement {
+    pub statements: Vec<Statement>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -87,6 +94,13 @@ pub struct InfixExpression {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct IfExpression {
+    pub condition: Box<Expression>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Operator {
     Minus,
     Plus,
@@ -96,7 +110,7 @@ pub enum Operator {
     Eq,
     NotEq,
     Lt,
-    Gt
+    Gt,
 }
 
 impl TryFrom<&Token> for Operator {
@@ -104,7 +118,7 @@ impl TryFrom<&Token> for Operator {
 
     fn try_from(value: &Token) -> Result<Self, Self::Error> {
         match value {
-            Token::Plus => Ok( Operator::Plus),
+            Token::Plus => Ok(Operator::Plus),
             Token::Minus => Ok(Operator::Minus),
             Token::Bang => Ok(Operator::Bang),
             Token::Asterisk => Ok(Operator::Asterisk),
@@ -113,7 +127,7 @@ impl TryFrom<&Token> for Operator {
             Token::Gt => Ok(Operator::Gt),
             Token::Eq => Ok(Operator::Eq),
             Token::NotEq => Ok(Operator::NotEq),
-            _ => bail!("Token cannot be converted into operator")
+            _ => bail!("Token cannot be converted into operator"),
         }
     }
 }
