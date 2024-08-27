@@ -20,11 +20,11 @@ pub struct Parser {
 impl Token {
     fn prefix_parse(&self, parser: &mut Parser) -> Result<Expression> {
         match &self {
-            Token::Ident(ident) => Ok(Expression::Callable(
-                CallableExpression::Identifier(Identifier {
+            Token::Ident(ident) => Ok(Expression::Callable(CallableExpression::Identifier(
+                Identifier {
                     value: ident.clone(),
-                }),
-            )),
+                },
+            ))),
             Token::Bang | Token::Minus => {
                 parser.next_token();
 
@@ -68,9 +68,9 @@ impl Token {
 
                 let body = parser.parse_block_statement()?;
 
-                Ok(Expression::Callable(
-                    CallableExpression::FunctionLiteral(FunctionLiteral { body, parameters }),
-                ))
+                Ok(Expression::Callable(CallableExpression::FunctionLiteral(
+                    FunctionLiteral { body, parameters },
+                )))
             }
             Token::If => {
                 if let Some(Token::Lparen) = parser.peek_token {
@@ -218,23 +218,15 @@ impl Parser {
 
             if let Some(Token::Assign) = self.peek_token {
                 self.next_token();
+                self.next_token();
 
-                // TODO continue
-                loop {
+                let value = self.parse_expression(OperatorPrecedence::Lowest)?;
+
+                if let Some(Token::Semicolon) = self.peek_token {
                     self.next_token();
-                    if let Some(Token::Semicolon) = self.current_token {
-                        break;
-                    }
                 }
 
-                let statement = Ok(Statement::Let(LetStatement {
-                    name,
-                    value: Expression::Callable(CallableExpression::Identifier(
-                        Identifier {
-                            value: "todo".to_string(),
-                        },
-                    )),
-                }));
+                let statement = Ok(Statement::Let(LetStatement { name, value }));
                 return statement;
             }
         };
@@ -242,18 +234,13 @@ impl Parser {
     }
 
     fn parse_return_statement(&mut self) -> Result<Statement> {
-        // TODO continue
-        loop {
+        self.next_token();
+        let value = self.parse_expression(OperatorPrecedence::Lowest)?;
+
+        if let Some(Token::Semicolon) = self.peek_token {
             self.next_token();
-            if let Some(Token::Semicolon) = self.current_token {
-                break;
-            }
         }
-        Ok(Statement::Return(ReturnStatement {
-            value: Expression::Callable(CallableExpression::Identifier(Identifier {
-                value: "todo".to_string(),
-            })),
-        }))
+        Ok(Statement::Return(ReturnStatement { value }))
     }
 
     fn parse_block_statement(&mut self) -> Result<BlockStatement> {
@@ -785,17 +772,13 @@ let foobar = 838383;
                     Expression::If(if_exp) => {
                         test_infix_exp(
                             if_exp.condition.as_ref(),
-                            &Expression::Callable(CallableExpression::Identifier(
-                                Identifier {
-                                    value: "x".to_string(),
-                                },
-                            )),
+                            &Expression::Callable(CallableExpression::Identifier(Identifier {
+                                value: "x".to_string(),
+                            })),
                             Operator::Lt,
-                            &Expression::Callable(CallableExpression::Identifier(
-                                Identifier {
-                                    value: "y".to_string(),
-                                },
-                            )),
+                            &Expression::Callable(CallableExpression::Identifier(Identifier {
+                                value: "y".to_string(),
+                            })),
                         );
 
                         assert_eq!(
@@ -849,17 +832,13 @@ let foobar = 838383;
                     Expression::If(if_exp) => {
                         test_infix_exp(
                             if_exp.condition.as_ref(),
-                            &Expression::Callable(CallableExpression::Identifier(
-                                Identifier {
-                                    value: "x".to_string(),
-                                },
-                            )),
+                            &Expression::Callable(CallableExpression::Identifier(Identifier {
+                                value: "x".to_string(),
+                            })),
                             Operator::Lt,
-                            &Expression::Callable(CallableExpression::Identifier(
-                                Identifier {
-                                    value: "y".to_string(),
-                                },
-                            )),
+                            &Expression::Callable(CallableExpression::Identifier(Identifier {
+                                value: "y".to_string(),
+                            })),
                         );
 
                         assert_eq!(
@@ -949,17 +928,13 @@ let foobar = 838383;
                     match stmt {
                         Statement::Expression(exp) => test_infix_exp(
                             &exp.expression,
-                            &Expression::Callable(CallableExpression::Identifier(
-                                Identifier {
-                                    value: "x".to_string(),
-                                },
-                            )),
+                            &Expression::Callable(CallableExpression::Identifier(Identifier {
+                                value: "x".to_string(),
+                            })),
                             Operator::Plus,
-                            &Expression::Callable(CallableExpression::Identifier(
-                                Identifier {
-                                    value: "y".to_string(),
-                                },
-                            )),
+                            &Expression::Callable(CallableExpression::Identifier(Identifier {
+                                value: "y".to_string(),
+                            })),
                         ),
                         _ => panic!("body statment is not identifier expression"),
                     }
@@ -1029,7 +1004,7 @@ let foobar = 838383;
 
     #[test]
     fn test_playground() {
-        let input = "(-(5 + 5))";
+        let input = "let x = 2; return x + 2;";
         let lexer = Lexer::new(input.to_string());
         let parser = Parser::new(lexer);
 
@@ -1037,7 +1012,7 @@ let foobar = 838383;
 
         dbg!(&program);
         assert_eq!(
-            1,
+            2,
             program.statments.len(),
             "invalid number of statements: {}",
             program.statments.len()
