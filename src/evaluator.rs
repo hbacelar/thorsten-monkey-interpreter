@@ -7,7 +7,7 @@ use anyhow::{bail, Result};
 pub struct Evaluator {}
 
 impl Evaluator {
-    fn inner_eval(node: &Node) -> Result<Object> {
+    fn eval_node(node: &Node) -> Result<Object> {
         match node {
             Node::Program(program) => Self::eval_statments(&program.statments),
             Node::Expression(exp) => Self::eval_exp(exp),
@@ -50,14 +50,12 @@ impl Evaluator {
     }
 
     pub fn eval(program: Program) -> Result<Object> {
-        Self::inner_eval(&Node::Program(program))
+        Self::eval_node(&Node::Program(program))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use core::panic;
-
     use anyhow::Result;
 
     use crate::{lexer::Lexer, object::Object, parser::Parser};

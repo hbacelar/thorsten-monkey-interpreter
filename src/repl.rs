@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use std::io::{BufRead, Read, Write};
 
-use crate::{lexer::Lexer, parser::Parser};
+use crate::{evaluator::Evaluator, lexer::Lexer, parser::Parser};
 
 pub struct Repl<R, W> {
     reader: R,
@@ -34,7 +34,8 @@ where
                     writeln!(self.writer, "Error {}", err).context("unable to write to stdout")?;
                 }
             } else {
-                writeln!(self.writer, "{:?}", program.statments).context("unable to write to stdout")?;
+                let obj = Evaluator::eval(program)?;
+                writeln!(self.writer, "{}", obj).context("unable to write to stdout")?;
             }
             writeln!(self.writer, "EOF").context("unable to write to stdout")?;
         }
