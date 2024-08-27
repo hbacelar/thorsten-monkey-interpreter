@@ -1,7 +1,9 @@
+use core::panic;
+
 use crate::{
-    ast::{BlockStatement, Expression, Node, Operator, Program, Statement},
+    ast::{BlockStatement, CallableExpression, Expression, Node, Operator, Program, Statement},
     environment::Environment,
-    object::Object,
+    object::{FunctionObj, Object},
 };
 use anyhow::{anyhow, bail, Result};
 
@@ -16,17 +18,24 @@ impl Evaluator {
         }
     }
 
+    fn eval_callable_exp(exp: &CallableExpression, env: &mut Environment) -> Result<Object> {
+        match exp {
+            CallableExpression::Identifier(ident) => env.get(&ident.value).map_or_else(
+                || Err(anyhow!("identifier not found: {}", ident.value)),
+                |v| Ok(v.clone()),
+            ),
+            //TODO check env clone
+            CallableExpression::FunctionLiteral(func) => Ok(Object::Function(FunctionObj {
+                arguments: func.parameters.clone(),
+                body: func.body.clone(),
+                env: env.clone(),
+            })),
+        }
+    }
+
     fn eval_exp(exp: &Expression, env: &mut Environment) -> Result<Object> {
         match exp {
-            Expression::Callable(callable) => match callable {
-                crate::ast::CallableExpression::Identifier(ident) => {
-                    env.get(&ident.value).map_or_else(
-                        || Err(anyhow!("identifier not found: {}", ident.value)),
-                        |v| Ok(v.clone()),
-                    )
-                }
-                crate::ast::CallableExpression::FunctionLiteral(_) => todo!(),
-            },
+            Expression::Callable(callable) => Self::eval_callable_exp(callable, env),
             Expression::IntegerLiteral(int) => Ok(Object::Integer(int.value)),
             Expression::BooleanLiteral(b) => Ok(Object::Boolean(b.value)),
             Expression::Prefix(exp) => {
@@ -109,7 +118,27 @@ impl Evaluator {
                     Ok(Object::Null)
                 }
             }
-            Expression::Call(_) => todo!(),
+            Expression::Call(call) => {
+                let call_exp = Self::eval_callable_exp(&call.func, env)?;
+                if let Object::Function(func) = call_exp {
+                    let args: Result<Vec<_>, _> = call
+                        .arguments
+                        .iter()
+                        .map(|arg| Self::eval_exp(arg, env))
+                        .collect();
+                    let mut ext_env = Environment::new_with_outer(&func.env);
+                    let args = args?;
+
+                    for (idx, param) in func.arguments.iter().enumerate() {
+                        if let Some(arg) = args.get(idx) {
+                            ext_env.set(param.value.clone(), arg.clone());
+                        }
+                    }
+
+                    return Self::eval_block_statments(&func.body, &mut ext_env);
+                }
+                panic!("callable is not a function");
+            }
         }
     }
 
@@ -510,6 +539,46 @@ mod tests {
                 "object doesnt match expected: {:?}, {:?}",
                 obj.to_string(),
                 test.expected
+            );
+        }
+    }
+
+    #[test]
+    fn test_fn_call_statments() {
+        let tests = vec![
+            ObjectTest {
+                input: "let identity = fn(x) { x; }; identity(5);",
+                expected: Object::Integer(5),
+            },
+            ObjectTest {
+                input: "let identity = fn(x) { return x; }; identity(5);",
+                expected: Object::Integer(5),
+            },
+            ObjectTest {
+                input: "let double = fn(x) { x * 2; }; double(5);",
+                expected: Object::Integer(10),
+            },
+            ObjectTest {
+                input: "let add = fn(x, y) { x + y; }; add(5, 5);",
+                expected: Object::Integer(10),
+            },
+            ObjectTest {
+                input: "let add = fn(x, y) { x + y; }; add(5, add(5,5));",
+                expected: Object::Integer(15),
+            },
+            ObjectTest {
+                input: "fn(x) { x; }(5);",
+                expected: Object::Integer(5),
+            },
+        ];
+
+        for test in tests {
+            let obj = test_eval(test.input).unwrap();
+            dbg!(&test.input);
+            assert_eq!(
+                obj, test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj, test.expected
             );
         }
     }

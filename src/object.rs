@@ -1,11 +1,24 @@
 use std::fmt::{Debug, Display};
 
+use crate::{
+    ast::{BlockStatement, Identifier},
+    environment::Environment,
+};
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Object {
     Integer(i64),
     Boolean(bool),
     ReturnValue(Box<Object>),
+    Function(FunctionObj),
     Null,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FunctionObj {
+    pub arguments: Vec<Identifier>,
+    pub body: BlockStatement,
+    pub env: Environment,
 }
 
 impl Object {
@@ -15,6 +28,7 @@ impl Object {
             Object::Boolean(b) => *b,
             Object::Null => false,
             Object::ReturnValue(obj) => obj.is_thruthy(),
+            Object::Function(_) => true,
         }
     }
     pub fn type_val(&self) -> &'static str {
@@ -23,8 +37,8 @@ impl Object {
             Object::Boolean(_) => "BOOLEAN",
             Object::ReturnValue(_) => "RETURN",
             Object::Null => "NULL",
+            Object::Function(_) => "FUNCTION",
         }
-
     }
 }
 
@@ -41,6 +55,9 @@ impl Display for Object {
             }
             Object::Null => write!(f, "null"),
             Object::ReturnValue(obj) => std::fmt::Display::fmt(&obj, f),
+            Object::Function(func) => {
+                write!(f, "fn({:?})\n{{\n}}", func.arguments)
+            }
         }
     }
 }
