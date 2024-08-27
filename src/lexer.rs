@@ -33,6 +33,17 @@ impl Lexer {
         self.read_position += 1;
     }
 
+    fn peak_char(&mut self) -> char {
+        if self.read_position >= self.input.len() {
+            '\0'
+        } else {
+            self.input
+                .chars()
+                .nth(self.read_position)
+                .expect("char bound already checked")
+        }
+    }
+
     fn read_itentifier(&mut self) -> String {
         let pos = self.position;
         while self.ch.is_alphabetic() {
@@ -62,12 +73,34 @@ impl Lexer {
 
         let ch = self.ch;
         let token = match ch {
-            '=' => Token::ASSIGN,
+            '=' => {
+                match self.peak_char() {
+                    '=' => {
+                        self.read_char();
+                        Token::EQ
+                    },
+                    _ => Token::ASSIGN
+                }
+            },
+            '+' => Token::PLUS,
+            '-' => Token::MINUS,
+            '!' => {
+                match self.peak_char() {
+                    '=' => {
+                        self.read_char();
+                        Token::NOT_EQ
+                    },
+                    _ => Token::BANG
+                }
+            },
+            '*' => Token::ASTERISK,
+            '/' => Token::SLASH,
+            '<' => Token::LT,
+            '>' => Token::GT,
             ';' => Token::SEMICOLON,
             '(' => Token::LPAREN,
             ')' => Token::RPAREN,
             ',' => Token::COMMA,
-            '+' => Token::PLUS,
             '{' => Token::LBRACE,
             '}' => Token::RBRACE,
             '\0' => Token::EOF,
@@ -77,13 +110,16 @@ impl Lexer {
                     let tok = match ident.as_ref() {
                         "let" => Token::LET,
                         "fn" => Token::FUNCTION,
+                        "if" => Token::IF,
+                        "else" => Token::ELSE,
+                        "true" => Token::TRUE,
+                        "false" => Token::FALSE,
+                        "return" => Token::RETURN,
                         _ => Token::IDENT(ident),
                     };
-                    // return because read_itendifier advanced the read_char
                     return tok;
                 } else if ch.is_numeric() {
                     let n = self.read_number();
-                    // return because read_itendifier advanced the read_char
                     return Token::INT(n);
                 } else {
                     Token::ILLEGAL
@@ -103,7 +139,26 @@ mod tests {
 
     #[test]
     fn next_token() {
-        let input = "let five = 5;\nlet ten = 10;\n\nlet add = fn(x,y) {\n x + y;\n};\nlet result = add(five, ten);\n";
+        let input = "let five = 5;
+let ten = 10;
+
+let add = fn(x, y) {
+  x + y;
+};
+
+let result = add(five, ten);
+!-/*5;
+5 < 10 > 5;
+
+if (5 < 10) {
+    return true;
+} else {
+    return false;
+}
+
+10 == 10;
+10 != 9;
+";
         let tokens = vec![
             Token::LET,
             Token::IDENT("five".to_string()),
@@ -140,6 +195,43 @@ mod tests {
             Token::COMMA,
             Token::IDENT("ten".to_string()),
             Token::RPAREN,
+            Token::SEMICOLON,
+            Token::BANG,
+            Token::MINUS,
+            Token::SLASH,
+            Token::ASTERISK,
+            Token::INT(5),
+            Token::SEMICOLON,
+            Token::INT(5),
+            Token::LT,
+            Token::INT(10),
+            Token::GT,
+            Token::INT(5),
+            Token::SEMICOLON,
+            Token::IF,
+            Token::LPAREN,
+            Token::INT(5),
+            Token::LT,
+            Token::INT(10),
+            Token::RPAREN,
+            Token::LBRACE,
+            Token::RETURN,
+            Token::TRUE,
+            Token::SEMICOLON,
+            Token::RBRACE,
+            Token::ELSE,
+            Token::LBRACE,
+            Token::RETURN,
+            Token::FALSE,
+            Token::SEMICOLON,
+            Token::RBRACE,
+            Token::INT(10),
+            Token::EQ,
+            Token::INT(10),
+            Token::SEMICOLON,
+            Token::INT(10),
+            Token::NOT_EQ,
+            Token::INT(9),
             Token::SEMICOLON,
         ];
 
