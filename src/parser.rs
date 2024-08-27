@@ -423,14 +423,14 @@ mod tests {
     struct PrefixOperationTests {
         pub input: String,
         pub operator: Operator,
-        pub int: i32,
+        pub int: i64,
     }
 
     struct InfixOperationTests {
         pub input: String,
         pub operator: Operator,
-        pub left: i32,
-        pub right: i32,
+        pub left: i64,
+        pub right: i64,
     }
 
     fn test_let_statement(statement: &Statement, val: &str) {
@@ -447,7 +447,7 @@ mod tests {
         }
     }
 
-    pub fn test_int_literal(exp: &Expression, val: i32) {
+    pub fn test_int_literal(exp: &Expression, val: i64) {
         match exp {
             Expression::IntegerLiteral(integer) => {
                 assert_eq!(integer.value, val);

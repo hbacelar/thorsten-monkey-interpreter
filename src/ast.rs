@@ -82,7 +82,7 @@ pub struct Identifier {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct IntegerLiteral {
-    pub value: i32,
+    pub value: i64,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -153,9 +153,9 @@ impl TryFrom<&Token<'_>> for Operator {
     }
 }
 
-// #[derive(Debug, PartialEq, Eq)]
-// pub enum Node {
-//     Program(Program),
-//     Statement(Statement),
-//     Expression(Expression),
-// }
+#[derive(Debug, PartialEq, Eq)]
+pub enum Node {
+    Program(Program),
+    Statement(Statement),
+    Expression(Expression),
+}
