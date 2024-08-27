@@ -65,7 +65,17 @@ impl Evaluator {
                     _ => Ok(Object::Null),
                 }
             }
-            Expression::If(_) => todo!(),
+            Expression::If(exp) => {
+                let condition = Self::eval_exp(&exp.condition)?;
+                if condition.is_thruthy() {
+                    Self::eval_statments(&exp.consequence.statements)
+                } else if let Some(alternative) = &exp.alternative {
+                    Self::eval_statments(&alternative.statements)
+                } else {
+                    Ok(Object::Null)
+                }
+
+            },
             Expression::Call(_) => todo!(),
         }
     }
@@ -180,6 +190,38 @@ mod tests {
                 input: "false",
                 expected: Object::Boolean(false),
             },
+            ObjectTest {
+                input: "5 > 3",
+                expected: Object::Boolean(true),
+            },
+            ObjectTest {
+                input: "5 < 3",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "1 == 1",
+                expected: Object::Boolean(true),
+            },
+            ObjectTest {
+                input: "1 != 1",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "true != true",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "true == true",
+                expected: Object::Boolean(true),
+            },
+            ObjectTest {
+                input: "false != false",
+                expected: Object::Boolean(false),
+            },
+            ObjectTest {
+                input: "false == false",
+                expected: Object::Boolean(true),
+            },
         ];
 
         for test in tests {
@@ -219,37 +261,44 @@ mod tests {
                 input: "!!5",
                 expected: Object::Boolean(true),
             },
+        ];
+
+        for test in tests {
+            let obj = test_eval(test.input).unwrap();
+            assert_eq!(
+                obj, test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj, test.expected
+            );
+        }
+    }
+    
+    #[test]
+    fn test_eval_if_else_expressions() {
+        let tests = vec![
             ObjectTest {
-                input: "5 > 3",
-                expected: Object::Boolean(true),
+                input: "if (true) { 10 }",
+                expected: Object::Integer(10),
             },
             ObjectTest {
-                input: "5 < 3",
-                expected: Object::Boolean(false),
+                input: "if (false) { 10 }",
+                expected: Object::Null,
             },
             ObjectTest {
-                input: "1 == 1",
-                expected: Object::Boolean(true),
+                input: "if (1) { 10 }",
+                expected: Object::Integer(10),
             },
             ObjectTest {
-                input: "1 != 1",
-                expected: Object::Boolean(false),
+                input: "if (1 < 2) { 10 }",
+                expected: Object::Integer(10),
             },
             ObjectTest {
-                input: "true != true",
-                expected: Object::Boolean(false),
+                input: "if (1 > 2) { 10 } else { 20 }",
+                expected: Object::Integer(20),
             },
             ObjectTest {
-                input: "true == true",
-                expected: Object::Boolean(true),
-            },
-            ObjectTest {
-                input: "false != false",
-                expected: Object::Boolean(false),
-            },
-            ObjectTest {
-                input: "false == false",
-                expected: Object::Boolean(true),
+                input: "if (1 < 2) { 10 } else { 20 }",
+                expected: Object::Integer(10),
             },
         ];
 
