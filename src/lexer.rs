@@ -68,30 +68,26 @@ impl Lexer {
         }
     }
 
-    pub fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Option<Token> {
         self.consume_whitespace();
 
         let ch = self.ch;
         let token = match ch {
-            '=' => {
-                match self.peak_char() {
-                    '=' => {
-                        self.read_char();
-                        Token::Eq
-                    },
-                    _ => Token::Assign
+            '=' => match self.peak_char() {
+                '=' => {
+                    self.read_char();
+                    Token::Eq
                 }
+                _ => Token::Assign,
             },
             '+' => Token::Plus,
             '-' => Token::Minus,
-            '!' => {
-                match self.peak_char() {
-                    '=' => {
-                        self.read_char();
-                        Token::NotEq
-                    },
-                    _ => Token::Bang
+            '!' => match self.peak_char() {
+                '=' => {
+                    self.read_char();
+                    Token::NotEq
                 }
+                _ => Token::Bang,
             },
             '*' => Token::Asterisk,
             '/' => Token::Slash,
@@ -117,17 +113,20 @@ impl Lexer {
                         "return" => Token::Return,
                         _ => Token::Ident(ident),
                     };
-                    return tok;
+                    return Some(tok);
                 } else if ch.is_numeric() {
                     let n = self.read_number();
-                    return Token::Int(n);
+                    return Some(Token::Int(n));
                 } else {
                     Token::Illegal
                 }
             }
         };
         self.read_char();
-        token
+        match token {
+            Token::Eof => None,
+            _ => Some(token),
+        }
     }
 }
 
@@ -238,7 +237,8 @@ if (5 < 10) {
         let mut lexer = Lexer::new(input.to_string());
 
         for (index, tt) in tokens.into_iter().enumerate() {
-            let token = lexer.next_token();
+            let token = lexer.next_token().unwrap();
+
             assert_eq!(
                 tt, token,
                 "index {}, test {:?}, algo {:?}",

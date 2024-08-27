@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use std::io::{BufRead, Read, Write};
 
-use crate::{lexer::Lexer, token::Token};
+use crate::lexer::Lexer;
 
 pub struct Repl<R, W> {
     reader: R,
@@ -26,13 +26,10 @@ where
                 .context("failed to read line")?;
 
             let mut lexer = Lexer::new(buffer);
-            loop {
-                let token = lexer.next_token();
+            while let Some(token) = lexer.next_token() {
                 writeln!(self.writer, "{:?}", token).context("unable to write to stdout")?;
-                if token == Token::Eof {
-                    break;
-                }
             }
+            writeln!(self.writer, "EOF").context("unable to write to stdout")?;
         }
     }
 }
