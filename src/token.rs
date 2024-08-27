@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq, Eq)]
-pub enum Token {
+pub enum Token<'a> {
     //Keywords
     Let,
     Function,
@@ -11,7 +11,7 @@ pub enum Token {
 
     Illegal,
     Eof,
-    Ident(String),
+    Ident(&'a str),
     Int(i32),
     Comma,
     Semicolon,

@@ -44,12 +44,12 @@ impl Lexer {
         }
     }
 
-    fn read_itentifier(&mut self) -> String {
+    fn read_itentifier(&mut self) -> &str {
         let pos = self.position;
         while self.ch.is_alphabetic() {
             self.read_char()
         }
-        self.input[pos..self.position].to_string()
+        &self.input[pos..self.position]
     }
 
     fn read_number(&mut self) -> i32 {
@@ -160,39 +160,39 @@ if (5 < 10) {
 ";
         let tokens = vec![
             Token::Let,
-            Token::Ident("five".to_string()),
+            Token::Ident("five"),
             Token::Assign,
             Token::Int(5),
             Token::Semicolon,
             Token::Let,
-            Token::Ident("ten".to_string()),
+            Token::Ident("ten"),
             Token::Assign,
             Token::Int(10),
             Token::Semicolon,
             Token::Let,
-            Token::Ident("add".to_string()),
+            Token::Ident("add"),
             Token::Assign,
             Token::Function,
             Token::Lparen,
-            Token::Ident("x".to_string()),
+            Token::Ident("x"),
             Token::Comma,
-            Token::Ident("y".to_string()),
+            Token::Ident("y"),
             Token::Rparen,
             Token::Lbrace,
-            Token::Ident("x".to_string()),
+            Token::Ident("x"),
             Token::Plus,
-            Token::Ident("y".to_string()),
+            Token::Ident("y"),
             Token::Semicolon,
             Token::Rbrace,
             Token::Semicolon,
             Token::Let,
-            Token::Ident("result".to_string()),
+            Token::Ident("result"),
             Token::Assign,
-            Token::Ident("add".to_string()),
+            Token::Ident("add"),
             Token::Lparen,
-            Token::Ident("five".to_string()),
+            Token::Ident("five"),
             Token::Comma,
-            Token::Ident("ten".to_string()),
+            Token::Ident("ten"),
             Token::Rparen,
             Token::Semicolon,
             Token::Bang,
