@@ -39,7 +39,7 @@ impl Evaluator {
                             right.type_val(),
                         );
                     }
-                    // TODO: check
+                    // TODO: check panic ?
                     _ => Ok(Object::Null),
                 }
             }
@@ -60,6 +60,7 @@ impl Evaluator {
                             Operator::NotEq => Ok(Object::Boolean(lval != rval)),
                             Operator::Lt => Ok(Object::Boolean(lval < rval)),
                             Operator::Gt => Ok(Object::Boolean(lval > rval)),
+                            //TODO panic is it a bug ?
                             _ => bail!(
                                 "unknown operator: {} {} {}",
                                 left_eval.type_val(),
@@ -113,7 +114,7 @@ impl Evaluator {
                 let val = Self::eval_exp(&r.value)?;
                 Ok(Object::ReturnValue(Box::new(val)))
             }
-            Statement::Block(_) => todo!(),
+            Statement::Block(block) => Self::eval_block_statments(block),
             Statement::Let(_) => todo!(),
         }
     }
