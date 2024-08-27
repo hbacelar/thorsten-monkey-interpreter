@@ -34,15 +34,22 @@ impl Evaluator {
                         if let Object::Integer(i) = right {
                             return Ok(Object::Integer(-i));
                         }
-                        Ok(Object::Null)
+                        bail!(
+                            "unknown operator: -{}",
+                            right.type_val(),
+                        );
                     }
+                    // TODO: check
                     _ => Ok(Object::Null),
                 }
             }
             Expression::Infix(exp) => {
+                let left_eval = Self::eval_exp(&exp.left)?;
+                let right_eval = Self::eval_exp(&exp.right)?;
+
                 // test for int operators
-                if let Object::Integer(lval) = Self::eval_exp(&exp.left)? {
-                    if let Object::Integer(rval) = Self::eval_exp(&exp.right)? {
+                if let Object::Integer(lval) = left_eval {
+                    if let Object::Integer(rval) = right_eval {
                         return match exp.operator {
                             // int result
                             Operator::Minus => Ok(Object::Integer(lval - rval)),
@@ -53,16 +60,36 @@ impl Evaluator {
                             Operator::NotEq => Ok(Object::Boolean(lval != rval)),
                             Operator::Lt => Ok(Object::Boolean(lval < rval)),
                             Operator::Gt => Ok(Object::Boolean(lval > rval)),
-                            _ => Ok(Object::Boolean(false)),
+                            _ => bail!(
+                                "unknown operator: {} {} {}",
+                                left_eval.type_val(),
+                                exp.operator,
+                                right_eval.type_val()
+                            ),
                         };
                     }
                 }
 
                 // Test for all operators
-                match exp.operator {
-                    Operator::Eq => Ok(Object::Boolean(exp.left == exp.right)),
-                    Operator::NotEq => Ok(Object::Boolean(exp.left != exp.right)),
-                    _ => Ok(Object::Null),
+                match &exp.operator {
+                    Operator::Eq => Ok(Object::Boolean(left_eval == right_eval)),
+                    Operator::NotEq => Ok(Object::Boolean(left_eval != right_eval)),
+                    op => {
+                        if left_eval.type_val() == right_eval.type_val() {
+                            bail!(
+                                "unknown operator: {} {} {}",
+                                left_eval.type_val(),
+                                op,
+                                right_eval.type_val()
+                            )
+                        }
+                        bail!(
+                            "type mismatch: {} {} {}",
+                            left_eval.type_val(),
+                            op,
+                            right_eval.type_val()
+                        )
+                    }
                 }
             }
             Expression::If(exp) => {
@@ -74,8 +101,7 @@ impl Evaluator {
                 } else {
                     Ok(Object::Null)
                 }
-
-            },
+            }
             Expression::Call(_) => todo!(),
         }
     }
@@ -86,7 +112,7 @@ impl Evaluator {
             Statement::Return(r) => {
                 let val = Self::eval_exp(&r.value)?;
                 Ok(Object::ReturnValue(Box::new(val)))
-            },
+            }
             Statement::Block(_) => todo!(),
             Statement::Let(_) => todo!(),
         }
@@ -107,7 +133,7 @@ impl Evaluator {
         }
         bail!("empty statments");
     }
-    
+
     fn eval_block_statments(block: &BlockStatement) -> Result<Object> {
         let mut obj = None;
 
@@ -140,6 +166,11 @@ mod tests {
     struct ObjectTest<'a> {
         pub input: &'a str,
         pub expected: Object,
+    }
+
+    struct ErrorTest<'a> {
+        pub input: &'a str,
+        pub expected: &'a str,
     }
 
     fn test_eval(input: &str) -> Result<Object> {
@@ -294,7 +325,7 @@ mod tests {
             );
         }
     }
-    
+
     #[test]
     fn test_eval_if_else_expressions() {
         let tests = vec![
@@ -333,7 +364,7 @@ mod tests {
             );
         }
     }
-    
+
     #[test]
     fn test_return_statments() {
         let tests = vec![
@@ -365,6 +396,52 @@ mod tests {
                 obj, test.expected,
                 "object doesnt match expected: {:?}, {:?}",
                 obj, test.expected
+            );
+        }
+    }
+
+    #[test]
+    fn test_errors() {
+        let tests = vec![
+            ErrorTest {
+                input: "5 + true;",
+                expected: "type mismatch: INTEGER + BOOLEAN",
+            },
+            ErrorTest {
+                input: "5 + true; 5;",
+                expected: "type mismatch: INTEGER + BOOLEAN",
+            },
+            ErrorTest {
+                input: "-true;",
+                expected: "unknown operator: -BOOLEAN",
+            },
+            ErrorTest {
+                input: "true + true;",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            ErrorTest {
+                input: "true + true; 5;",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            ErrorTest {
+                input: "if (10 > 1) { if (10 > 1) {return true + false;} return 1;}",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            ErrorTest {
+                input: "if (10 > 1) { return true + false;}",
+                expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+        ];
+
+        for test in tests {
+            let obj = test_eval(test.input).unwrap_err();
+            dbg!(&test.input);
+            assert_eq!(
+                obj.to_string(),
+                test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj.to_string(),
+                test.expected
             );
         }
     }

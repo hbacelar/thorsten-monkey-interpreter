@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use anyhow::bail;
 
 use crate::token::{Token, TokenKind};
@@ -131,6 +133,23 @@ pub enum Operator {
     Lt,
     Gt,
     Lparen,
+}
+
+impl Display for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operator::Minus => write!(f, "-"),
+            Operator::Plus => write!(f, "+"),
+            Operator::Bang => write!(f, "!"),
+            Operator::Asterisk => write!(f, "*"),
+            Operator::Slash => write!(f, "/"),
+            Operator::Eq => write!(f, "="),
+            Operator::NotEq => write!(f, "!="),
+            Operator::Lt => write!(f, "<"),
+            Operator::Gt => write!(f, ">"),
+            Operator::Lparen => write!(f, "("),
+        }
+    }
 }
 
 impl TryFrom<&Token<'_>> for Operator {

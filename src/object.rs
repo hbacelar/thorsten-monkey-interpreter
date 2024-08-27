@@ -17,6 +17,15 @@ impl Object {
             Object::ReturnValue(obj) => obj.is_thruthy(),
         }
     }
+    pub fn type_val(&self) -> &'static str {
+        match self {
+            Object::Integer(_) => "INTEGER",
+            Object::Boolean(_) => "BOOLEAN",
+            Object::ReturnValue(_) => "RETURN",
+            Object::Null => "NULL",
+        }
+
+    }
 }
 
 impl Display for Object {
