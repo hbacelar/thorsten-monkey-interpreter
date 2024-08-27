@@ -1,27 +1,36 @@
 use crate::{
     ast::{BlockStatement, Expression, Node, Operator, Program, Statement},
+    environment::Environment,
     object::Object,
 };
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 
 pub struct Evaluator {}
 
 impl Evaluator {
-    fn eval_node(node: &Node) -> Result<Object> {
+    fn eval_node(node: &Node, env: &mut Environment) -> Result<Object> {
         match node {
-            Node::Program(program) => Self::eval_program(&program),
-            Node::Expression(exp) => Self::eval_exp(exp),
-            Node::Statement(stmt) => Self::eval_statment(stmt),
+            Node::Program(program) => Self::eval_program(&program, env),
+            Node::Expression(exp) => Self::eval_exp(exp, env),
+            Node::Statement(stmt) => Self::eval_statment(stmt, env),
         }
     }
 
-    fn eval_exp(exp: &Expression) -> Result<Object> {
+    fn eval_exp(exp: &Expression, env: &mut Environment) -> Result<Object> {
         match exp {
-            Expression::Callable(_) => todo!(),
+            Expression::Callable(callable) => match callable {
+                crate::ast::CallableExpression::Identifier(ident) => {
+                    env.get(&ident.value).map_or_else(
+                        || Err(anyhow!("identifier not found: {}", ident.value)),
+                        |v| Ok(v.clone()),
+                    )
+                }
+                crate::ast::CallableExpression::FunctionLiteral(_) => todo!(),
+            },
             Expression::IntegerLiteral(int) => Ok(Object::Integer(int.value)),
             Expression::BooleanLiteral(b) => Ok(Object::Boolean(b.value)),
             Expression::Prefix(exp) => {
-                let right = Self::eval_exp(&exp.right)?;
+                let right = Self::eval_exp(&exp.right, env)?;
 
                 match exp.operator {
                     Operator::Bang => match right {
@@ -34,18 +43,15 @@ impl Evaluator {
                         if let Object::Integer(i) = right {
                             return Ok(Object::Integer(-i));
                         }
-                        bail!(
-                            "unknown operator: -{}",
-                            right.type_val(),
-                        );
+                        bail!("unknown operator: -{}", right.type_val(),);
                     }
                     // TODO: check panic ?
                     _ => Ok(Object::Null),
                 }
             }
             Expression::Infix(exp) => {
-                let left_eval = Self::eval_exp(&exp.left)?;
-                let right_eval = Self::eval_exp(&exp.right)?;
+                let left_eval = Self::eval_exp(&exp.left, env)?;
+                let right_eval = Self::eval_exp(&exp.right, env)?;
 
                 // test for int operators
                 if let Object::Integer(lval) = left_eval {
@@ -94,11 +100,11 @@ impl Evaluator {
                 }
             }
             Expression::If(exp) => {
-                let condition = Self::eval_exp(&exp.condition)?;
+                let condition = Self::eval_exp(&exp.condition, env)?;
                 if condition.is_thruthy() {
-                    Self::eval_block_statments(&exp.consequence)
+                    Self::eval_block_statments(&exp.consequence, env)
                 } else if let Some(alternative) = &exp.alternative {
-                    Self::eval_block_statments(&alternative)
+                    Self::eval_block_statments(&alternative, env)
                 } else {
                     Ok(Object::Null)
                 }
@@ -107,23 +113,27 @@ impl Evaluator {
         }
     }
 
-    fn eval_statment(stmt: &Statement) -> Result<Object> {
+    fn eval_statment(stmt: &Statement, env: &mut Environment) -> Result<Object> {
         match stmt {
-            Statement::Expression(exp) => Self::eval_exp(&exp.expression),
+            Statement::Expression(exp) => Self::eval_exp(&exp.expression, env),
             Statement::Return(r) => {
-                let val = Self::eval_exp(&r.value)?;
+                let val = Self::eval_exp(&r.value, env)?;
                 Ok(Object::ReturnValue(Box::new(val)))
             }
-            Statement::Block(block) => Self::eval_block_statments(block),
-            Statement::Let(_) => todo!(),
+            Statement::Block(block) => Self::eval_block_statments(block, env),
+            Statement::Let(l) => {
+                let val = Self::eval_exp(&l.value, env)?;
+                env.set(l.name.value.clone(), val);
+                Ok(Object::Null)
+            }
         }
     }
 
-    fn eval_program(program: &Program) -> Result<Object> {
+    fn eval_program(program: &Program, env: &mut Environment) -> Result<Object> {
         let mut obj = None;
 
         for stmt in &program.statments {
-            obj = Some(Self::eval_statment(stmt)?);
+            obj = Some(Self::eval_statment(stmt, env)?);
             if let Some(Object::ReturnValue(r)) = obj {
                 return Ok(*r);
             }
@@ -135,11 +145,11 @@ impl Evaluator {
         bail!("empty statments");
     }
 
-    fn eval_block_statments(block: &BlockStatement) -> Result<Object> {
+    fn eval_block_statments(block: &BlockStatement, env: &mut Environment) -> Result<Object> {
         let mut obj = None;
 
         for stmt in &block.statements {
-            obj = Some(Self::eval_statment(stmt)?);
+            obj = Some(Self::eval_statment(stmt, env)?);
             if let Some(Object::ReturnValue(_)) = obj {
                 return Ok(obj.unwrap());
             }
@@ -151,8 +161,8 @@ impl Evaluator {
         bail!("empty statments");
     }
 
-    pub fn eval(program: Program) -> Result<Object> {
-        Self::eval_node(&Node::Program(program))
+    pub fn eval(program: Program, env: &mut Environment) -> Result<Object> {
+        Self::eval_node(&Node::Program(program), env)
     }
 }
 
@@ -160,7 +170,7 @@ impl Evaluator {
 mod tests {
     use anyhow::Result;
 
-    use crate::{lexer::Lexer, object::Object, parser::Parser};
+    use crate::{environment::Environment, lexer::Lexer, object::Object, parser::Parser};
 
     use super::Evaluator;
 
@@ -178,8 +188,9 @@ mod tests {
         let l = Lexer::new(input);
         let p = Parser::new(l);
         let program = p.parse_program();
+        let mut test_env = Environment::default();
 
-        Evaluator::eval(program)
+        Evaluator::eval(program, &mut test_env)
     }
 
     #[test]
@@ -433,6 +444,62 @@ mod tests {
                 expected: "unknown operator: BOOLEAN + BOOLEAN",
             },
         ];
+
+        for test in tests {
+            let obj = test_eval(test.input).unwrap_err();
+            dbg!(&test.input);
+            assert_eq!(
+                obj.to_string(),
+                test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj.to_string(),
+                test.expected
+            );
+        }
+    }
+
+    #[test]
+    fn test_let_statments() {
+        let tests = vec![
+            ObjectTest {
+                input: "let a = 5; a;",
+                expected: Object::Integer(5),
+            },
+            ObjectTest {
+                input: "let a = 5 * 5; a;",
+                expected: Object::Integer(25),
+            },
+            ObjectTest {
+                input: "return 2 * 5; 9;",
+                expected: Object::Integer(10),
+            },
+            ObjectTest {
+                input: "let a = 5; let b = a; b;",
+                expected: Object::Integer(5),
+            },
+            ObjectTest {
+                input: "let a = 5; let b = a; let c = a + b + 5; c;",
+                expected: Object::Integer(15),
+            },
+        ];
+
+        for test in tests {
+            let obj = test_eval(test.input).unwrap();
+            dbg!(&test.input);
+            assert_eq!(
+                obj, test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj, test.expected
+            );
+        }
+    }
+
+    #[test]
+    fn test_let_errors() {
+        let tests = vec![ErrorTest {
+            input: "foobar",
+            expected: "identifier not found: foobar",
+        }];
 
         for test in tests {
             let obj = test_eval(test.input).unwrap_err();

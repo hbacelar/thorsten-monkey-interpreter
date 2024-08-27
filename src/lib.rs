@@ -5,3 +5,4 @@ pub mod parser;
 pub mod repl;
 pub mod token;
 mod object;
+mod environment;

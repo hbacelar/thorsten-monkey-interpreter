@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use std::io::{BufRead, Read, Write};
 
-use crate::{evaluator::Evaluator, lexer::Lexer, parser::Parser};
+use crate::{environment::Environment, evaluator::Evaluator, lexer::Lexer, parser::Parser};
 
 pub struct Repl<R, W> {
     reader: R,
@@ -17,6 +17,7 @@ where
         Repl { reader, writer }
     }
     pub fn start(mut self) -> Result<()> {
+        let mut repl_env = Environment::default();
         loop {
             write!(self.writer, ">> ").context("unable to write to stdout")?;
             self.writer.flush().context("unable to flush writer")?;
@@ -34,10 +35,9 @@ where
                     writeln!(self.writer, "Error {}", err).context("unable to write to stdout")?;
                 }
             } else {
-                let obj = Evaluator::eval(program)?;
+                let obj = Evaluator::eval(program, &mut repl_env)?;
                 writeln!(self.writer, "{}", obj).context("unable to write to stdout")?;
             }
-            writeln!(self.writer, "EOF").context("unable to write to stdout")?;
         }
     }
 }
