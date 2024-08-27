@@ -188,6 +188,13 @@ mod tests {
         pub operator: Operator,
         pub int: i32,
     }
+    
+    struct InfixOperationTests {
+        pub input: String,
+        pub operator: Operator,
+        pub left: i32,
+        pub right: i32,
+    }
 
     fn test_let_statement(statement: &Statement, val: &str) {
         if let Statement::Let(statement) = statement {
@@ -369,6 +376,91 @@ let foobar = 838383;
                             mem::discriminant(&test.operator)
                         );
                         test_int_literal(&exp.right, test.int);
+                    }
+                    _ => panic!("Prefix not found expression"),
+                },
+                _ => panic!("Statment is not identifier expression"),
+            }
+        }
+    }
+    
+    #[test]
+    fn test_infix_expressions() {
+        let tests = vec![
+            InfixOperationTests {
+                input: "5 + 5;".to_string(),
+                operator: Operator::Plus,
+                left: 5,
+                right: 5,
+            },
+            InfixOperationTests {
+                input: "5 - 5;".to_string(),
+                operator: Operator::Minus,
+                left: 5,
+                right: 5,
+            },
+            InfixOperationTests {
+                input: "5 * 5;".to_string(),
+                operator: Operator::Asterisk,
+                left: 5,
+                right: 5,
+            },
+            InfixOperationTests {
+                input: "5 / 5;".to_string(),
+                operator: Operator::Slash,
+                left: 5,
+                right: 5,
+            },
+            InfixOperationTests {
+                input: "5 > 5;".to_string(),
+                operator: Operator::Gt,
+                left: 5,
+                right: 5,
+            },
+            InfixOperationTests {
+                input: "5 < 5;".to_string(),
+                operator: Operator::Lt,
+                left: 5,
+                right: 5,
+            },
+            InfixOperationTests {
+                input: "5 != 5;".to_string(),
+                operator: Operator::NotEq,
+                left: 5,
+                right: 5,
+            },
+            InfixOperationTests {
+                input: "5 == 5;".to_string(),
+                operator: Operator::Eq,
+                left: 5,
+                right: 5,
+            },
+        ];
+
+        for test in tests {
+            let lexer = Lexer::new(test.input);
+            let parser = Parser::new(lexer);
+
+            let program = parser.parse_program().unwrap();
+
+            assert_eq!(
+                1,
+                program.statments.len(),
+                "invalid number of statements: {}",
+                program.statments.len()
+            );
+
+            let stmt = program.statments.get(0).unwrap();
+
+            match stmt {
+                Statement::Expression(exp) => match &exp.expression {
+                    Expression::InfixExpression(exp) => {
+                        assert_eq!(
+                            mem::discriminant(&exp.operator),
+                            mem::discriminant(&test.operator)
+                        );
+                        test_int_literal(&exp.right, test.right);
+                        test_int_literal(&exp.left, test.left);
                     }
                     _ => panic!("Prefix not found expression"),
                 },

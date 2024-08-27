@@ -25,6 +25,7 @@ pub enum Expression {
     Identifier(Identifier),
     IntegerLiteral(IntegerLiteral),
     PrefixExpression(PrefixExpression),
+    InfixExpression(InfixExpression),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -57,13 +58,29 @@ pub struct IntegerLiteral {
 pub struct PrefixExpression {
     // TODO use arenas, and vec based index on nodes
     pub right: Box<Expression>,
+    // Only allow prefix operators bang, minus
+    pub operator: Operator,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct InfixExpression {
+    // TODO use arenas, and vec based index on nodes
+    pub right: Box<Expression>,
+    pub left: Box<Expression>,
     pub operator: Operator,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Operator {
     Minus,
+    Plus,
     Bang,
+    Asterisk,
+    Slash,
+    Eq,
+    NotEq,
+    Lt,
+    Gt
 }
 
 #[derive(Debug, PartialEq, Eq)]
