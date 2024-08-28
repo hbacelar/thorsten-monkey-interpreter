@@ -140,6 +140,7 @@ impl Evaluator {
                 }
                 panic!("callable is not a function");
             }
+            Expression::StringLiteral(_) => todo!(),
         }
     }
 

@@ -37,6 +37,7 @@ pub enum Statement {
 pub enum Expression {
     Callable(CallableExpression),
     IntegerLiteral(IntegerLiteral),
+    StringLiteral(StringLiteral),
     BooleanLiteral(BooleanLiteral),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
@@ -85,6 +86,11 @@ pub struct Identifier {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntegerLiteral {
     pub value: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StringLiteral {
+    pub value: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

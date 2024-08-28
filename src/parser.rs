@@ -2,7 +2,7 @@ use crate::{
     ast::{
         BlockStatement, CallExpression, CallableExpression, Expression, ExpressionStatement,
         FunctionLiteral, Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement,
-        Operator, PrefixExpression, Program, ReturnStatement, Statement,
+        Operator, PrefixExpression, Program, ReturnStatement, Statement, StringLiteral,
     },
     lexer::Lexer,
     token::{Token, TokenKind},
@@ -37,6 +37,9 @@ impl<'a> Token<'a> {
                     .val
                     .parse()
                     .expect("was str => int, already validated by token"),
+            })),
+            TokenKind::String => Ok(Expression::StringLiteral(StringLiteral {
+                value: self.val.to_string(),
             })),
             TokenKind::True => Ok(Expression::BooleanLiteral(crate::ast::BooleanLiteral {
                 value: true,
@@ -601,6 +604,40 @@ let foobar = 838383;
         match stmt {
             Statement::Expression(exp) => {
                 test_int_literal(&exp.expression, 5);
+            }
+            _ => panic!("Statment is not identifier expression"),
+        }
+    }
+
+    #[test]
+    fn test_string_literal_expression() {
+        let input = "\"hello world\";";
+        let lexer = Lexer::new(input);
+        let parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+
+        assert_eq!(
+            1,
+            program.statments.len(),
+            "invalid number of statements: {}",
+            program.statments.len()
+        );
+
+        let stmt = program.statments.get(0).unwrap();
+
+        match stmt {
+            Statement::Expression(exp) => {
+                if let Expression::StringLiteral(s) = &exp.expression {
+                    assert_eq!(
+                        "hello world",
+                        s.value.as_str(),
+                        "invalid string value: {}",
+                        s.value
+                    );
+                } else {
+                    panic!("Expression is not a string");
+                }
             }
             _ => panic!("Statment is not identifier expression"),
         }
