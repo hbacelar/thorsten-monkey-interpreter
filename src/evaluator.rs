@@ -37,6 +37,8 @@ impl Evaluator {
         match exp {
             Expression::Callable(callable) => Self::eval_callable_exp(callable, env),
             Expression::IntegerLiteral(int) => Ok(Object::Integer(int.value)),
+            //TODO clone
+            Expression::StringLiteral(s) => Ok(Object::String(s.value.clone())),
             Expression::BooleanLiteral(b) => Ok(Object::Boolean(b.value)),
             Expression::Prefix(exp) => {
                 let right = Self::eval_exp(&exp.right, env)?;
@@ -140,7 +142,6 @@ impl Evaluator {
                 }
                 panic!("callable is not a function");
             }
-            Expression::StringLiteral(_) => todo!(),
         }
     }
 
@@ -222,6 +223,25 @@ mod tests {
         let mut test_env = Environment::default();
 
         Evaluator::eval(program, &mut test_env)
+    }
+
+    #[test]
+    fn test_eval_string_expression() {
+        let tests = vec![
+            ObjectTest {
+                input: "\"hello world\";",
+                expected: Object::String("hello world".to_string()),
+            },
+        ];
+        
+        for test in tests {
+            let obj = test_eval(test.input).unwrap();
+            assert_eq!(
+                obj, test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj, test.expected
+            );
+        }
     }
 
     #[test]
