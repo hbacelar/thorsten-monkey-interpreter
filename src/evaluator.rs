@@ -87,6 +87,22 @@ impl Evaluator {
                         };
                     }
                 }
+                
+                // test for string operators
+                if let Object::String(lval) = &left_eval {
+                    if let Object::String(rval) = &right_eval {
+                        return match exp.operator {
+                            // int result
+                            Operator::Plus => Ok(Object::String(format!("{}{}", &lval, &rval))),
+                            _ => bail!(
+                                "unknown operator: {} {} {}",
+                                left_eval.type_val(),
+                                exp.operator,
+                                right_eval.type_val()
+                            ),
+                        };
+                    }
+                }
 
                 // Test for all operators
                 match &exp.operator {
@@ -230,6 +246,25 @@ mod tests {
         let tests = vec![
             ObjectTest {
                 input: "\"hello world\";",
+                expected: Object::String("hello world".to_string()),
+            },
+        ];
+        
+        for test in tests {
+            let obj = test_eval(test.input).unwrap();
+            assert_eq!(
+                obj, test.expected,
+                "object doesnt match expected: {:?}, {:?}",
+                obj, test.expected
+            );
+        }
+    }
+
+    #[test]
+    fn test_eval_string_concat() {
+        let tests = vec![
+            ObjectTest {
+                input: "\"hello\" + \" \" + \"world\";",
                 expected: Object::String("hello world".to_string()),
             },
         ];
@@ -493,6 +528,10 @@ mod tests {
             ErrorTest {
                 input: "if (10 > 1) { return true + false;}",
                 expected: "unknown operator: BOOLEAN + BOOLEAN",
+            },
+            ErrorTest {
+                input: "\"hello\" - \"world\"",
+                expected: "unknown operator: STRING - STRING",
             },
         ];
 
